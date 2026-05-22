@@ -32,6 +32,4 @@ class AISettingsEditForm(RegistryEditForm):
         self.fields["models"].widgetFactory = AIModelsFieldWidget
 
 
-AISettingsControlPanel = layout.wrap_form(
-    AISettingsEditForm, ControlPanelFormWrapper
-)
+AISettingsControlPanel = layout.wrap_form(AISettingsEditForm, ControlPanelFormWrapper)

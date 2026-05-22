@@ -67,7 +67,9 @@ class AIService:
 
         if capability == "chat":
             text = chat_completion(
-                url, api_key, model_name,
+                url,
+                api_key,
+                model_name,
                 _build_messages(data.get("prompt"), data.get("system")),
                 think=False,
             )
@@ -75,7 +77,9 @@ class AIService:
 
         if capability == "think":
             text = chat_completion(
-                url, api_key, model_name,
+                url,
+                api_key,
+                model_name,
                 _build_messages(data.get("prompt"), data.get("system")),
             )
             return {"response": text}
@@ -86,7 +90,9 @@ class AIService:
                 {"type": "image_url", "image_url": {"url": data.get("image")}},
             ]
             text = chat_completion(
-                url, api_key, model_name,
+                url,
+                api_key,
+                model_name,
                 [{"role": "user", "content": content}],
                 think=False,
             )
@@ -107,7 +113,9 @@ class AIService:
 
         if capability == "tools":
             message = chat_completion_message(
-                url, api_key, model_name,
+                url,
+                api_key,
+                model_name,
                 data.get("messages") or [],
                 tools=data.get("tools") or [],
                 think=False,
@@ -132,8 +140,7 @@ class AIService:
         gate_ctx = context if context is not None else api.portal.get()
         if not entry_permits(entry, gate_ctx):
             logger.info(
-                "AI call for capability %r denied by permission gate on "
-                "context %r.",
+                "AI call for capability %r denied by permission gate on context %r.",
                 capability,
                 getattr(gate_ctx, "absolute_url", lambda: gate_ctx)(),
             )
@@ -142,34 +149,41 @@ class AIService:
 
     def chat(self, prompt, model=None, system=None, context=None):
         return self._call(
-            "chat", model,
+            "chat",
+            model,
             {"prompt": prompt, "system": system},
             context=context,
         )
 
     def think(self, prompt, model=None, system=None, context=None):
         return self._call(
-            "think", model,
+            "think",
+            model,
             {"prompt": prompt, "system": system},
             context=context,
         )
 
     def analyze_image(self, prompt, image, model=None, context=None):
         return self._call(
-            "vision", model,
+            "vision",
+            model,
             {"prompt": prompt, "image": image},
             context=context,
         )
 
     def embed(self, text, model=None, context=None):
         return self._call(
-            "embed", model, {"input": text},
-            context=context, result_key="embedding",
+            "embed",
+            model,
+            {"input": text},
+            context=context,
+            result_key="embedding",
         )
 
     def tool_call(self, messages, tools, model=None, context=None):
         return self._call(
-            "tools", model,
+            "tools",
+            model,
             {"messages": messages, "tools": tools},
             context=context,
         )

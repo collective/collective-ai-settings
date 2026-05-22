@@ -43,9 +43,7 @@ def _validate(capability: str, data: dict) -> str | None:
             return "prompt and image are required"
     if capability == "embed" and not (data.get("input") or data.get("text")):
         return "input is required"
-    if capability == "tools" and (
-        not data.get("messages") or not data.get("tools")
-    ):
+    if capability == "tools" and (not data.get("messages") or not data.get("tools")):
         return "messages and tools are required"
     return None
 
@@ -56,7 +54,7 @@ def _worker(service, task_id, capability, entry, data):
     try:
         result = service.run_call(capability, entry, data)
         complete_task(task_id, result)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.exception("AI task %s failed", task_id)
         fail_task(task_id, str(exc))
 

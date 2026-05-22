@@ -61,14 +61,13 @@ def _entry_name(entry) -> str | None:
 
 def _list_models(uri: str, api_key: str | None) -> list[str]:
     return [
-        name for name in (_entry_name(e) for e in _list_models_raw(uri, api_key))
+        name
+        for name in (_entry_name(e) for e in _list_models_raw(uri, api_key))
         if name
     ]
 
 
-def _model_capabilities(
-    uri: str, api_key: str | None, model: str
-) -> list[str] | None:
+def _model_capabilities(uri: str, api_key: str | None, model: str) -> list[str] | None:
     """Return Ollama `/api/show` capabilities for a model, or None on failure."""
     endpoint = uri.rstrip("/") + "/api/show"
     body = json.dumps({"model": model}).encode("utf-8")
@@ -125,14 +124,11 @@ def fetch_models(
     if not capability:
         return models
     return [
-        m for m in models
-        if capability in (_model_capabilities(uri, api_key, m) or [])
+        m for m in models if capability in (_model_capabilities(uri, api_key, m) or [])
     ]
 
 
-def fetch_model_capabilities(
-    uri: str, api_key: str | None, model: str
-) -> list[str]:
+def fetch_model_capabilities(uri: str, api_key: str | None, model: str) -> list[str]:
     """Return the capabilities advertised by a given model.
 
     Tries Ollama's ``/api/show`` first; if that yields no capabilities,

@@ -5,9 +5,7 @@ from plone import api
 
 def _all_connections() -> list[dict]:
     return (
-        api.portal.get_registry_record(
-            "models", interface=IAISettings, default=[]
-        )
+        api.portal.get_registry_record("models", interface=IAISettings, default=[])
         or []
     )
 
@@ -24,9 +22,7 @@ def _flatten(connection: dict, model_def: dict) -> dict:
         "api_key": connection.get("api_key") or "",
         "model": model_def.get("model", ""),
         "capabilities": list(model_def.get("capabilities") or []),
-        "protect_with_permission": bool(
-            model_def.get("protect_with_permission")
-        ),
+        "protect_with_permission": bool(model_def.get("protect_with_permission")),
         "permissions": list(model_def.get("permissions") or []),
     }
 
@@ -50,9 +46,7 @@ def pick_model(capability: str | None = None) -> dict | None:
     return None
 
 
-def resolve_model(
-    capability: str, override: str | None = None
-) -> dict | None:
+def resolve_model(capability: str, override: str | None = None) -> dict | None:
     """Return the model entry (flattened) that should be used for a call.
 
     With ``override`` — strict match, in order:

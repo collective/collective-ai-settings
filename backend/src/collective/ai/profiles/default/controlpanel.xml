@@ -3,16 +3,15 @@
         name="portal_controlpanel"
 >
 
-  <configlet
-      title="AI Settings"
-      action_id="ai-settings"
-      appId="collective.ai"
-      category="plone-general"
-      condition_expr=""
-      url_expr="string:${portal_url}/@@ai-settings"
-      visible="True"
-      icon_expr=""
-      i18n:attributes="title"
+  <configlet action_id="ai-settings"
+             appId="collective.ai"
+             category="plone-general"
+             condition_expr=""
+             icon_expr=""
+             title="AI Settings"
+             url_expr="string:${portal_url}/@@ai-settings"
+             visible="True"
+             i18n:attributes="title"
   >
     <permission>Manage portal</permission>
   </configlet>
