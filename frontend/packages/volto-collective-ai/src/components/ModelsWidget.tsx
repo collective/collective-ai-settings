@@ -126,35 +126,32 @@ const ModelsWidget: React.FC<Props> = ({ id, value, onChange }) => {
       .catch(() => setCapabilities([]));
   }, []);
 
-  const loadModels = useCallback(
-    async (url: string, apiKey?: string) => {
-      if (!url) return;
+  const loadModels = useCallback(async (url: string, apiKey?: string) => {
+    if (!url) return;
+    setModelsByUrl((prev) => ({
+      ...prev,
+      [url]: { loading: true, items: prev[url]?.items || [] },
+    }));
+    try {
+      const data = await apiFetch<{ models: string[] }>('/@ai-list-models', {
+        method: 'POST',
+        body: JSON.stringify({ url, api_key: apiKey || undefined }),
+      });
       setModelsByUrl((prev) => ({
         ...prev,
-        [url]: { loading: true, items: prev[url]?.items || [] },
+        [url]: { loading: false, items: data.models || [] },
       }));
-      try {
-        const data = await apiFetch<{ models: string[] }>('/@ai-list-models', {
-          method: 'POST',
-          body: JSON.stringify({ url, api_key: apiKey || undefined }),
-        });
-        setModelsByUrl((prev) => ({
-          ...prev,
-          [url]: { loading: false, items: data.models || [] },
-        }));
-      } catch (err) {
-        setModelsByUrl((prev) => ({
-          ...prev,
-          [url]: {
-            loading: false,
-            items: [],
-            error: (err as Error).message,
-          },
-        }));
-      }
-    },
-    [],
-  );
+    } catch (err) {
+      setModelsByUrl((prev) => ({
+        ...prev,
+        [url]: {
+          loading: false,
+          items: [],
+          error: (err as Error).message,
+        },
+      }));
+    }
+  }, []);
 
   // Only prefetch model lists for connections that have at least one
   // pinned model (they're the only ones that show a dropdown).
@@ -351,18 +348,17 @@ const ModelsWidget: React.FC<Props> = ({ id, value, onChange }) => {
       if (connDropIndex !== i) setConnDropIndex(i);
     };
 
-  const onConnDrop =
-    (i: number) => (e: React.DragEvent<HTMLDivElement>) => {
-      e.preventDefault();
-      if (connDragIndex === null || connDragIndex === i) {
-        setConnDragIndex(null);
-        setConnDropIndex(null);
-        return;
-      }
-      onChange(id, reorder(connections, connDragIndex, i));
+  const onConnDrop = (i: number) => (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (connDragIndex === null || connDragIndex === i) {
       setConnDragIndex(null);
       setConnDropIndex(null);
-    };
+      return;
+    }
+    onChange(id, reorder(connections, connDragIndex, i));
+    setConnDragIndex(null);
+    setConnDropIndex(null);
+  };
 
   const onConnDragEnd = () => {
     setConnDragIndex(null);
@@ -376,10 +372,7 @@ const ModelsWidget: React.FC<Props> = ({ id, value, onChange }) => {
       e.stopPropagation();
       setModelDrag({ connIndex, modelIndex });
       e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData(
-        'text/plain',
-        `model:${connIndex}:${modelIndex}`,
-      );
+      e.dataTransfer.setData('text/plain', `model:${connIndex}:${modelIndex}`);
     };
 
   const onModelDragOver =

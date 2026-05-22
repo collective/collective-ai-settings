@@ -38,9 +38,8 @@ SUPPORTED_CAPABILITIES = ("chat", "think", "vision", "embed", "tools")
 def _validate(capability: str, data: dict) -> str | None:
     if capability in ("chat", "think") and not data.get("prompt"):
         return "prompt is required"
-    if capability == "vision":
-        if not data.get("prompt") or not data.get("image"):
-            return "prompt and image are required"
+    if capability == "vision" and (not data.get("prompt") or not data.get("image")):
+        return "prompt and image are required"
     if capability == "embed" and not (data.get("input") or data.get("text")):
         return "input is required"
     if capability == "tools" and (not data.get("messages") or not data.get("tools")):

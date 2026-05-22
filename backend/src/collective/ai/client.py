@@ -17,7 +17,9 @@ def _post_json(
     timeout: int = DEFAULT_TIMEOUT,
 ) -> dict | None:
     encoded = json.dumps(body).encode("utf-8")
-    request = urllib.request.Request(url, data=encoded, method="POST")
+    request = urllib.request.Request(  # noqa: S310 - URI is admin-supplied
+        url, data=encoded, method="POST"
+    )
     request.add_header("Content-Type", "application/json")
     if api_key:
         request.add_header("Authorization", f"Bearer {api_key}")

@@ -44,7 +44,7 @@ def _http_json(request: urllib.request.Request):
 def _list_models_raw(uri: str, api_key: str | None) -> list:
     """Return the raw entries from /v1/models (dicts or strings)."""
     endpoint = uri.rstrip("/") + "/v1/models"
-    request = urllib.request.Request(endpoint)
+    request = urllib.request.Request(endpoint)  # noqa: S310 - URI is admin-supplied
     if api_key:
         request.add_header("Authorization", f"Bearer {api_key}")
     payload = _http_json(request)
@@ -71,7 +71,9 @@ def _model_capabilities(uri: str, api_key: str | None, model: str) -> list[str] 
     """Return Ollama `/api/show` capabilities for a model, or None on failure."""
     endpoint = uri.rstrip("/") + "/api/show"
     body = json.dumps({"model": model}).encode("utf-8")
-    request = urllib.request.Request(endpoint, data=body, method="POST")
+    request = urllib.request.Request(  # noqa: S310 - URI is admin-supplied
+        endpoint, data=body, method="POST"
+    )
     request.add_header("Content-Type", "application/json")
     if api_key:
         request.add_header("Authorization", f"Bearer {api_key}")
