@@ -1,0 +1,319 @@
+.ai-models-widget {
+  .ai-models-empty {
+    color: #666;
+    font-style: italic;
+    margin-bottom: 1em;
+  }
+
+  .ai-model-row {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-bottom: 0.75em;
+    background: #fafafa;
+    transition:
+      box-shadow 120ms ease,
+      transform 120ms ease,
+      border-color 120ms ease;
+
+    &.is-dragging {
+      opacity: 0.5;
+    }
+
+    &.is-drop-target {
+      border-color: #2185d0;
+      box-shadow: 0 0 0 2px rgba(33, 133, 208, 0.25);
+    }
+  }
+
+  .ai-model-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75em;
+    padding: 0.5em 0.75em;
+    background: #f0f0f0;
+    border-bottom: 1px solid #ddd;
+    border-radius: 4px 4px 0 0;
+    cursor: grab;
+    user-select: none;
+
+    &:active {
+      cursor: grabbing;
+    }
+  }
+
+  .ai-drag-handle {
+    color: #888;
+    font-size: 1.1em;
+    letter-spacing: -2px;
+    padding: 0 0.25em;
+  }
+
+  .ai-model-title {
+    flex: 1;
+    font-weight: 600;
+  }
+
+  .ai-model-body {
+    padding: 0.75em 1em;
+  }
+
+  .ai-field {
+    margin-bottom: 0.75em;
+    display: flex;
+    flex-direction: column;
+
+    > label {
+      font-weight: 500;
+      margin-bottom: 0.25em;
+    }
+
+    input[type='url'],
+    input[type='password'],
+    select {
+      padding: 0.4em 0.6em;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      font-size: inherit;
+    }
+  }
+
+  .ai-capabilities {
+    border: 1px dashed #ccc;
+    border-radius: 3px;
+    padding: 0.5em 0.75em;
+
+    > legend {
+      padding: 0 0.4em;
+      font-size: 0.9em;
+      color: #555;
+    }
+  }
+
+  .ai-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+    margin: 0.15em 0;
+    font-weight: normal;
+  }
+
+  .ai-hint {
+    font-weight: normal;
+    font-size: 0.85em;
+    color: #777;
+    margin-left: 0.4em;
+  }
+
+  .ai-error {
+    color: #b33;
+  }
+
+  .ai-remove {
+    background: #fff;
+    border: 1px solid #c66;
+    color: #c33;
+    padding: 0.3em 0.8em;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+
+  .ai-add {
+    background: #2185d0;
+    color: #fff;
+    border: 0;
+    padding: 0.5em 1em;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+
+  .ai-toggle {
+    margin: 0.5em 0;
+    font-weight: 500;
+  }
+
+  .ai-permissions {
+    border: 1px dashed #ccc;
+    border-radius: 3px;
+    padding: 0.5em 0.75em;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25em;
+
+    > legend {
+      padding: 0 0.4em;
+      font-size: 0.9em;
+      color: #555;
+    }
+  }
+
+  .ai-perm-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3em;
+    margin-bottom: 0.5em;
+  }
+
+  .ai-perm-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25em;
+    background: #e8f1f8;
+    border: 1px solid #b8d4e8;
+    color: #1a4a72;
+    border-radius: 12px;
+    padding: 0.15em 0.6em;
+    font-size: 0.85em;
+  }
+
+  .ai-perm-chip-remove {
+    background: transparent;
+    border: 0;
+    color: #1a4a72;
+    cursor: pointer;
+    font-size: 1.1em;
+    line-height: 1;
+    padding: 0 0.1em;
+  }
+
+  .ai-perm-add {
+    display: flex;
+    gap: 0.4em;
+    margin-top: 0.4em;
+
+    > input {
+      flex: 1;
+      padding: 0.4em 0.6em;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      font-size: inherit;
+    }
+  }
+
+  .ai-perm-add-btn {
+    background: #2185d0;
+    color: #fff;
+    border: 0;
+    padding: 0 0.9em;
+    border-radius: 3px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 1.1em;
+
+    &:disabled {
+      background: #aac4d6;
+      cursor: not-allowed;
+    }
+  }
+
+  // ---- Connection card (top-level) ----
+  .ai-connection {
+    border: 1px solid #c5d5e0;
+    border-radius: 5px;
+    margin-bottom: 1em;
+    background: #f4f8fb;
+    transition:
+      box-shadow 120ms ease,
+      border-color 120ms ease,
+      opacity 120ms ease;
+
+    &.is-dragging {
+      opacity: 0.5;
+    }
+
+    &.is-drop-target {
+      border-color: #2185d0;
+      box-shadow: 0 0 0 2px rgba(33, 133, 208, 0.25);
+    }
+  }
+
+  .ai-connection-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75em;
+    padding: 0.6em 0.9em;
+    background: #dbe7ef;
+    border-bottom: 1px solid #c5d5e0;
+    border-radius: 5px 5px 0 0;
+    cursor: grab;
+    user-select: none;
+
+    &:active {
+      cursor: grabbing;
+    }
+  }
+
+  .ai-connection-title {
+    flex: 1;
+    font-weight: 600;
+  }
+
+  .ai-connection-body {
+    padding: 0.75em 1em;
+  }
+
+  // ---- Nested models list inside a connection ----
+  .ai-connection-models {
+    margin-top: 0.5em;
+    padding: 0.5em 0 0.25em 0.75em;
+    border-left: 3px solid #c5d5e0;
+  }
+
+  .ai-models-passthrough {
+    color: #777;
+    font-style: italic;
+    margin: 0.25em 0 0.6em;
+  }
+
+  .ai-add-model {
+    background: #fff;
+    color: #2185d0;
+    border: 1px solid #2185d0;
+    margin-top: 0.25em;
+  }
+
+  // ---- Model card (nested inside a connection) ----
+  .ai-model-card {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-bottom: 0.6em;
+    background: #fff;
+    transition:
+      box-shadow 120ms ease,
+      border-color 120ms ease,
+      opacity 120ms ease;
+
+    &.is-dragging {
+      opacity: 0.5;
+    }
+
+    &.is-drop-target {
+      border-color: #2185d0;
+      box-shadow: 0 0 0 2px rgba(33, 133, 208, 0.25);
+    }
+  }
+
+  .ai-model-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75em;
+    padding: 0.4em 0.7em;
+    background: #f0f0f0;
+    border-bottom: 1px solid #ddd;
+    border-radius: 4px 4px 0 0;
+    cursor: grab;
+    user-select: none;
+
+    &:active {
+      cursor: grabbing;
+    }
+  }
+
+  .ai-model-card-title {
+    flex: 1;
+    font-weight: 600;
+  }
+
+  .ai-model-card-body {
+    padding: 0.6em 0.8em;
+  }
+}

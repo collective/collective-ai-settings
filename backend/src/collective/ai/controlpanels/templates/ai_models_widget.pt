@@ -1,0 +1,25 @@
+<tal:block i18n:domain="collective.ai">
+  <div data-ai-models-widget=""
+       tal:attributes="class string:${view/klass} field-widget;
+                       id view/id;
+                       data-widget-name view/name;
+                       data-portal-url view/portal_url">
+    <input type="hidden"
+           tal:attributes="name view/name;
+                          value view/json_value;
+                          id string:${view/id}-input" />
+
+    <p class="ai-models-empty"
+       i18n:translate="">Loading AI models…</p>
+
+    <div class="ai-models-list" hidden="hidden"></div>
+
+    <button type="button" class="ai-models-add"
+            i18n:translate="">+ Add model</button>
+
+    <link rel="stylesheet"
+          tal:attributes="href string:${view/portal_url}/++resource++collective.ai/ai-models-widget.css" />
+    <script defer="defer"
+            tal:attributes="src string:${view/portal_url}/++resource++collective.ai/ai-models-widget.js"></script>
+  </div>
+</tal:block>
