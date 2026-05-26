@@ -179,9 +179,12 @@ message), and `embeddings`. The utility uses these internally.
 
 ### From HTTP / Volto — the `@ai` endpoint
 
-The endpoint is async because individual model calls can take minutes,
-which exceeds typical proxy timeouts. The request enqueues a worker
-thread and returns a task id immediately; the client polls.
+By default the endpoint is **synchronous**: it runs the AI call in the
+request thread and returns the result in the response body. For
+long-running calls (vision, long-context generations) that risk
+exceeding proxy timeouts, pass `"async": true` to defer the call onto
+a worker thread; the endpoint then returns a task id immediately and
+the client polls.
 
 ```http
 POST /Plone/<path>/++api++/@ai
@@ -196,7 +199,21 @@ Content-Type: application/json
 }
 ```
 
-Response (HTTP 202):
+Synchronous response (HTTP 200):
+
+```jsonc
+{
+  "status": "done",            // or "error"
+  "result": { "response": "…" }
+}
+```
+
+On a synchronous failure the endpoint returns HTTP 502 with
+`{"status": "error", "error": "..."}`.
+
+#### Async mode
+
+Add `"async": true` to the body. Response (HTTP 202):
 
 ```json
 { "task_id": "1244133e-7506-…", "status": "running" }

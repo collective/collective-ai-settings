@@ -1,10 +1,13 @@
-"""Async REST proxy for :class:`IAIService`.
+"""REST proxy for :class:`IAIService`.
 
-The synchronous AI calls can take minutes (vision models, long-context
-generations), which is longer than the typical HTTP request timeouts in
-proxies and load balancers. To avoid timeouts the endpoint enqueues the
-call onto a worker thread and returns a task id immediately. Clients
-poll ``GET @ai-task/<task_id>`` until ``status`` becomes ``done`` or
+By default the endpoint runs the AI call **synchronously** in the
+request thread and returns the result in the response body.
+
+For long-running calls (vision models, long-context generations) that
+risk exceeding HTTP timeouts in proxies and load balancers, callers can
+pass ``"async": true``. In that mode the endpoint enqueues the call
+onto a worker thread, returns a task id with HTTP 202, and the client
+polls ``GET @ai-task/<task_id>`` until ``status`` becomes ``done`` or
 ``error``.
 
 URL: ``POST /++api++/@ai`` with body::
@@ -12,6 +15,7 @@ URL: ``POST /++api++/@ai`` with body::
     {
       "capability": "chat" | "think" | "vision" | "embed" | "tools",
       "model": "...",   // optional override
+      "async": false,   // optional; true → background thread + task_id
       // capability-specific fields:
       //   chat/think  → prompt (required), system
       //   vision      → prompt (required), image (required)
@@ -59,9 +63,13 @@ def _worker(service, task_id, capability, entry, data):
 
 
 class AIServiceEndpoint(Service):
-    """``POST /++api++/@ai`` — enqueue an async AI call.
+    """``POST /++api++/@ai`` — run an AI call.
 
-    Returns ``{"task_id": ..., "status": "running"}`` with HTTP 202.
+    Default (``async`` absent or false): runs synchronously and returns
+    ``{"status": "done", "result": {...}}`` with HTTP 200.
+
+    With ``"async": true``: enqueues the call on a worker thread and
+    returns ``{"task_id": ..., "status": "running"}`` with HTTP 202.
     Poll ``GET @ai-task/<task_id>`` for the result.
     """
 
@@ -86,7 +94,8 @@ class AIServiceEndpoint(Service):
             return {"error": "AI service utility not registered"}
 
         # Resolve the model in the request thread (registry access stays on
-        # the Zope connection); the worker thread receives a plain dict.
+        # the Zope connection); the worker thread, if used, receives a
+        # plain dict.
         entry = service.resolve_for(capability, data.get("model") or None)
         if entry is None:
             self.request.response.setStatus(503)
@@ -99,12 +108,21 @@ class AIServiceEndpoint(Service):
             self.request.response.setStatus(403)
             return {"error": "permission denied for AI model"}
 
-        task_id = create_task()
-        Thread(
-            target=_worker,
-            args=(service, task_id, capability, dict(entry), dict(data)),
-            daemon=True,
-            name=f"ai-task-{task_id[:8]}",
-        ).start()
-        self.request.response.setStatus(202)
-        return {"task_id": task_id, "status": "running"}
+        if data.get("async"):
+            task_id = create_task()
+            Thread(
+                target=_worker,
+                args=(service, task_id, capability, dict(entry), dict(data)),
+                daemon=True,
+                name=f"ai-task-{task_id[:8]}",
+            ).start()
+            self.request.response.setStatus(202)
+            return {"task_id": task_id, "status": "running"}
+
+        try:
+            result = service.run_call(capability, dict(entry), dict(data))
+        except Exception as exc:
+            logger.exception("AI call failed")
+            self.request.response.setStatus(502)
+            return {"status": "error", "error": str(exc)}
+        return {"status": "done", "result": result}

@@ -82,10 +82,12 @@ further than `utils.py`.
 ### REST endpoint body
 
 `POST /++api++/@ai` body: `{capability, prompt|input|messages|image,
-system?, tools?, model?}`. Dispatched by the `capability` string.
-Result payload key depends on capability (`response` vs
-`embedding`). See the body-shapes table in
-[`README.md`](./README.md).
+system?, tools?, model?, async?}`. Dispatched by the `capability`
+string. Default is synchronous (returns `{status, result}` with HTTP
+200/502); pass `"async": true` to defer onto a worker thread and get
+`{task_id, status}` with HTTP 202 instead. Result payload key depends
+on capability (`response` vs `embedding`). See the body-shapes table
+in [`README.md`](./README.md).
 
 ### Capability tokens
 

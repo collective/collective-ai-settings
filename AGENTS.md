@@ -62,9 +62,10 @@ the others.
    `backend/src/collective/ai/vocabularies/capabilities.py`. The
    tokens match Ollama's `/api/show` keys so auto-detection works.
 3. **The REST endpoints** —
-   - `POST /++api++/@ai` (async) — accepts `{capability, prompt, …,
-     model?}`, returns `{task_id, status}`.
-   - `GET /++api++/@ai-task/<id>` — task polling.
+   - `POST /++api++/@ai` — accepts `{capability, prompt, …, model?,
+     async?}`. Synchronous by default (returns `{status, result}`);
+     with `"async": true` returns `{task_id, status}` for polling.
+   - `GET /++api++/@ai-task/<id>` — task polling (async mode only).
    - `POST /++api++/@ai-list-models` — lists models for a given URL
      (used by the widgets' model dropdowns).
    - `POST /++api++/@ai-model-capabilities` — auto-detects a model's
