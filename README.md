@@ -2,7 +2,7 @@
 
 [![Built with Cookieplone](https://img.shields.io/badge/built%20with-Cookieplone-0083be.svg?logo=cookiecutter)](https://github.com/plone/cookieplone-templates/)
 [![Black code style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![CI](https://github.com/collective/collective-ai/actions/workflows/main.yml/badge.svg)](https://github.com/collective/collective-ai/actions/workflows/main.yml)
+[![CI](https://github.com/collective/collective-ai-settings/actions/workflows/main.yml/badge.svg)](https://github.com/collective/collective-ai-settings/actions/workflows/main.yml)
 
 Connect your AI models to Plone.
 
@@ -52,8 +52,8 @@ declaration and permission gating.
 1. Clone this repository, then change your working directory.
 
     ```shell
-    git clone git@github.com:collective/collective-ai.git
-    cd collective-ai
+    git clone git@github.com:collective/collective-ai-settings.git
+    cd collective-ai-settings
     ```
 
 2. Install this code base.
@@ -90,7 +90,7 @@ Deploy a local Docker Compose environment that includes the following.
 
 - Docker images for Backend and Frontend 🖼️
 - A stack with a Traefik router and a PostgreSQL database 🗃️
-- Accessible at [http://collective-ai.localhost](http://collective-ai.localhost) 🌐
+- Accessible at [http://collective-ai-settings.localhost](http://collective-ai-settings.localhost) 🌐
 
 Run the following commands in a shell session.
 

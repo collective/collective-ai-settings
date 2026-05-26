@@ -26,7 +26,7 @@ without the addon being mounted in classic UI).
 ## Repository layout
 
 ```
-collective-ai/
+collective-ai-settings/
 ├── README.md                  ← user-facing intro + feature list + quickstart
 ├── AGENTS.md                  ← (this file)
 ├── Makefile                   ← orchestrates backend + frontend
