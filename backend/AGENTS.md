@@ -1,15 +1,15 @@
 # AGENTS.md — backend
 
-Agent guide for the `collective.ai` Plone addon (`backend/`). For
+Agent guide for the `collective.aisettings` Plone addon (`backend/`). For
 the cross-cutting picture of how this half talks to the Volto half,
 read [`../AGENTS.md`](../AGENTS.md) first.
 
 ## Scope
 
-Anything under `backend/src/collective/ai/` plus the package
+Anything under `backend/src/collective/aisettings/` plus the package
 metadata (`pyproject.toml`, `instance.yaml`, profiles, ZCML).
 
-The frontend Volto addon (`frontend/packages/volto-collective-ai/`)
+The frontend Volto addon (`frontend/packages/volto-collective-ai-settings/`)
 is documented at [`../frontend/AGENTS.md`](../frontend/AGENTS.md).
 Don't edit it from this side; coordinate cross-half changes via the
 contracts described below.
@@ -17,7 +17,7 @@ contracts described below.
 ## Package layout
 
 ```
-backend/src/collective/ai/
+backend/src/collective/aisettings/
 ├── interfaces.py              ← IAISettings (JSON schema) + IAIService
 ├── utils.py                   ← resolve_model / pick_model / _flatten
 ├── service.py                 ← AIService (registered as IAIService utility)
@@ -36,7 +36,7 @@ backend/src/collective/ai/
 │   ├── model_capabilities.py  ← @ai-model-capabilities REST helper
 │   └── configure.zcml         ← <plone:service> registrations
 ├── vocabularies/
-│   ├── capabilities.py        ← collective.ai.Capabilities vocabulary
+│   ├── capabilities.py        ← collective.aisettings.Capabilities vocabulary
 │   └── models.py              ← fetch_models / fetch_model_capabilities helpers
 ├── static/                    ← classic widget JS + CSS (served via ++resource++)
 ├── events/                    ← (subscriber stubs; empty by default)
@@ -51,7 +51,7 @@ breaks things.
 
 ### Registry schema — `IAISettings.models`
 
-Defined in [`interfaces.py`](src/collective/ai/interfaces.py). A
+Defined in [`interfaces.py`](src/collective/aisettings/interfaces.py). A
 JSON list of *connections*, each containing a URL, optional API key,
 and a nested list of pinned models with capabilities and a permission
 gate. See `backend/README.md` for the canonical shape. The Volto and
@@ -92,11 +92,11 @@ in [`README.md`](./README.md).
 ### Capability tokens
 
 Hard-coded list shared between
-[`vocabularies/capabilities.py`](src/collective/ai/vocabularies/capabilities.py)
+[`vocabularies/capabilities.py`](src/collective/aisettings/vocabularies/capabilities.py)
 and the `CAPABILITY_TOKEN` map in
-[`service.py`](src/collective/ai/service.py). The tokens match
+[`service.py`](src/collective/aisettings/service.py). The tokens match
 Ollama's `/api/show` strings so auto-detection
-([`vocabularies/models.fetch_model_capabilities`](src/collective/ai/vocabularies/models.py))
+([`vocabularies/models.fetch_model_capabilities`](src/collective/aisettings/vocabularies/models.py))
 works without translation.
 
 If you add a capability, update **both** the vocabulary and the
@@ -108,17 +108,17 @@ the REST endpoint dispatch is hard-coded, so it needs the new branch.
 ## Adding a new capability — checklist
 
 1. Add the token to `CAPABILITIES` in
-   [`vocabularies/capabilities.py`](src/collective/ai/vocabularies/capabilities.py).
+   [`vocabularies/capabilities.py`](src/collective/aisettings/vocabularies/capabilities.py).
 2. Add `"<capability_name>": "<token>"` to `CAPABILITY_TOKEN` in
-   [`service.py`](src/collective/ai/service.py).
+   [`service.py`](src/collective/aisettings/service.py).
 3. Add a branch to `AIService.run_call` (and a facade method like
    `chat`/`think`/etc.) for the new operation.
 4. Add a branch to `_validate` and the body-shapes table in
-   [`services/ai.py`](src/collective/ai/services/ai.py).
+   [`services/ai.py`](src/collective/aisettings/services/ai.py).
 5. Add the capability name to `SUPPORTED_CAPABILITIES` in the same
    file.
 6. Update the `IAIService` interface docstrings in
-   [`interfaces.py`](src/collective/ai/interfaces.py).
+   [`interfaces.py`](src/collective/aisettings/interfaces.py).
 7. Document in [`README.md`](./README.md): capability table + body
    shapes.
 
@@ -130,9 +130,9 @@ calls `getSecurityManager().checkPermission(perm_title, context)` so
 any Plone permission title works at runtime. If you want a new
 common permission to appear as a checkbox, edit the
 `COMMON_PERMISSIONS` constant in both
-[`static/ai-models-widget.js`](src/collective/ai/static/ai-models-widget.js)
+[`static/ai-models-widget.js`](src/collective/aisettings/static/ai-models-widget.js)
 and in
-`frontend/packages/volto-collective-ai/src/components/ModelsWidget.tsx`.
+`frontend/packages/volto-collective-ai-settings/src/components/ModelsWidget.tsx`.
 
 ## Async / worker thread invariants
 
@@ -167,19 +167,19 @@ always passes `self.context`.
 ## ZCML cheat sheet
 
 - Top-level package configure:
-  [`configure.zcml`](src/collective/ai/configure.zcml) — includes
-  subpackages, registers `<browser:resourceDirectory name="collective.ai"
+  [`configure.zcml`](src/collective/aisettings/configure.zcml) — includes
+  subpackages, registers `<browser:resourceDirectory name="collective.aisettings"
   directory="static" />` and the `<utility … provides=IAIService />`.
 - Control panel:
-  [`controlpanels/configure.zcml`](src/collective/ai/controlpanels/configure.zcml)
+  [`controlpanels/configure.zcml`](src/collective/aisettings/controlpanels/configure.zcml)
   — registers the `RegistryConfigletPanel` adapter (used by Volto),
   the classic `browser:page name="ai-settings"`, and the
   `AIModelsDataConverter` (JSONField ↔ widget string).
 - REST endpoints:
-  [`services/configure.zcml`](src/collective/ai/services/configure.zcml)
+  [`services/configure.zcml`](src/collective/aisettings/services/configure.zcml)
   — `@ai-list-models`, `@ai-model-capabilities`, `@ai`, `@ai-task`.
 - Capabilities vocabulary:
-  [`vocabularies/configure.zcml`](src/collective/ai/vocabularies/configure.zcml).
+  [`vocabularies/configure.zcml`](src/collective/aisettings/vocabularies/configure.zcml).
 
 ## Validation commands
 
@@ -208,11 +208,11 @@ existing pytest pattern.
   flat dict. Add new fields by extending `_flatten`; don't leak the
   nested connection/model structure outside `utils.py`.
 - Whenever you change the registry JSON schema in
-  [`interfaces.py`](src/collective/ai/interfaces.py), update
+  [`interfaces.py`](src/collective/aisettings/interfaces.py), update
   **both** widgets (the classic JS and the Volto TSX) in the same
   change. See `../frontend/AGENTS.md` for the frontend side.
 - The `@ai-task` polling endpoint reads from an in-memory task
-  registry ([`services/tasks.py`](src/collective/ai/services/tasks.py));
+  registry ([`services/tasks.py`](src/collective/aisettings/services/tasks.py));
   tasks don't survive a restart and aren't cross-process. If you
   need persistence/horizontal scaling, document the trade-off in the
   PR — don't silently switch backing stores.

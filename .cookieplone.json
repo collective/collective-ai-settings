@@ -2,7 +2,7 @@
     "project_slug": "collective-ai",
     "title": "Collective AI",
     "volto_version": "19.0.0",
-    "python_package_name": "collective.ai",
+    "python_package_name": "collective.aisettings",
     "author": "Franco Pellegrini",
     "description": "Connect your AI models to Plone",
     "github_organization": "collective",
@@ -11,6 +11,6 @@
     "use_prerelease_versions": false,
     "container_registry": "github",
     "initialize_documentation": true,
-    "npm_package_name": "volto-collective-ai",
+    "npm_package_name": "volto-collective-ai-settings",
     "__template__": "monorepo_addon"
 }

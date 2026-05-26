@@ -1,4 +1,4 @@
-from collective.ai import PACKAGE_NAME
+from collective.aisettings import PACKAGE_NAME
 
 import pytest
 
@@ -9,11 +9,11 @@ class TestSetupUninstall:
         installer.uninstall_product(PACKAGE_NAME)
 
     def test_addon_uninstalled(self, installer):
-        """Test if collective.ai is uninstalled."""
+        """Test if collective.aisettings is uninstalled."""
         assert installer.is_product_installed(PACKAGE_NAME) is False
 
     def test_browserlayer_not_registered(self, browser_layers):
         """Test that IBrowserLayer is not registered."""
-        from collective.ai.interfaces import IBrowserLayer
+        from collective.aisettings.interfaces import IBrowserLayer
 
         assert IBrowserLayer not in browser_layers

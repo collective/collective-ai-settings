@@ -7,7 +7,7 @@ on:
 
 env:
   NODE_VERSION: 24
-  ADDON_NAME: volto-collective-ai
+  ADDON_NAME: volto-collective-ai-settings
   BASE_BRANCH: main
 
 jobs:

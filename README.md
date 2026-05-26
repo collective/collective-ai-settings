@@ -6,7 +6,7 @@
 
 Connect your AI models to Plone.
 
-`collective.ai` lets a Plone site talk to one or more OpenAI-compatible Large
+`collective.aisettings` lets a Plone site talk to one or more OpenAI-compatible Large
 Language Model services (Ollama, Lemonade, OpenAI, vLLM, etc.) from both
 backend Python code and the Volto frontend, with per-model capability
 declaration and permission gating.
@@ -201,7 +201,7 @@ Any Plone addon, browser view, event subscriber, or block can use the
 registered global utility:
 
 ```python
-from collective.ai.interfaces import IAIService
+from collective.aisettings.interfaces import IAIService
 from zope.component import queryUtility
 
 service = queryUtility(IAIService)
@@ -301,12 +301,12 @@ integration.
 
 This monorepo consists of the following distinct sections:
 
-- **backend/** — Plone addon `collective.ai`. Houses the registry schema,
+- **backend/** — Plone addon `collective.aisettings`. Houses the registry schema,
   control-panel form, classic z3c.form widget, IAIService utility, async
   REST endpoint, capabilities vocabulary, and permission helpers. See
   [backend/README.md](./backend/README.md) and
   [backend/AGENTS.md](./backend/AGENTS.md).
-- **frontend/** — Volto addon `volto-collective-ai`. Houses the custom
+- **frontend/** — Volto addon `volto-collective-ai-settings`. Houses the custom
   control-panel widget (`ModelsWidget`) that renders the connection /
   model UI in Volto. See [frontend/README.md](./frontend/README.md) and
   [frontend/AGENTS.md](./frontend/AGENTS.md).

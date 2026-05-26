@@ -1,6 +1,6 @@
-from collective.ai.testing import ACCEPTANCE_TESTING
-from collective.ai.testing import FUNCTIONAL_TESTING
-from collective.ai.testing import INTEGRATION_TESTING
+from collective.aisettings.testing import ACCEPTANCE_TESTING
+from collective.aisettings.testing import FUNCTIONAL_TESTING
+from collective.aisettings.testing import INTEGRATION_TESTING
 from pytest_plone import fixtures_factory
 
 

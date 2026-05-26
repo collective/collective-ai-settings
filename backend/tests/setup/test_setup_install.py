@@ -1,14 +1,14 @@
-from collective.ai import PACKAGE_NAME
+from collective.aisettings import PACKAGE_NAME
 
 
 class TestSetupInstall:
     def test_addon_installed(self, installer):
-        """Test if collective.ai is installed."""
+        """Test if collective.aisettings is installed."""
         assert installer.is_product_installed(PACKAGE_NAME) is True
 
     def test_browserlayer(self, browser_layers):
         """Test that IBrowserLayer is registered."""
-        from collective.ai.interfaces import IBrowserLayer
+        from collective.aisettings.interfaces import IBrowserLayer
 
         assert IBrowserLayer in browser_layers
 

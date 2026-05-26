@@ -1,8 +1,0 @@
-<configure xmlns="http://namespaces.zope.org/zope">
-
-  <utility
-      name="collective.ai.Capabilities"
-      component=".capabilities.capabilities_vocabulary"
-      />
-
-</configure>

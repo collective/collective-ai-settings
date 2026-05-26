@@ -1,13 +1,13 @@
 # AGENTS.md — frontend
 
-Agent guide for the `volto-collective-ai` Volto addon
-(`frontend/packages/volto-collective-ai/`). For the cross-cutting
+Agent guide for the `volto-collective-ai-settings` Volto addon
+(`frontend/packages/volto-collective-ai-settings/`). For the cross-cutting
 picture of how this half talks to the Plone backend, read
 [`../AGENTS.md`](../AGENTS.md) first.
 
 ## Scope
 
-- The product addon: `frontend/packages/volto-collective-ai/src/`
+- The product addon: `frontend/packages/volto-collective-ai-settings/src/`
 - Workspace plumbing at the repo root: `package.json`,
   `pnpm-workspace.yaml`, `volto.config.js`, `mrs.developer.json`
 
@@ -20,7 +20,7 @@ picture of how this half talks to the Plone backend, read
 ## Package layout
 
 ```
-frontend/packages/volto-collective-ai/
+frontend/packages/volto-collective-ai-settings/
 ├── package.json
 ├── src/
 │   ├── index.ts                 ← applyConfig entry — calls install(config)
@@ -41,11 +41,11 @@ frontend/packages/volto-collective-ai/
 Exactly one feature: the **`ModelsWidget`** that drives the
 `IAISettings.models` JSONField on the AI Settings control panel in
 Volto. It mirrors, feature-for-feature, the classic z3c.form widget
-on the Plone side (`backend/src/collective/ai/static/ai-models-widget.js`);
+on the Plone side (`backend/src/collective/aisettings/static/ai-models-widget.js`);
 when the contract changes, both must change.
 
 It is registered against the field id `models` in
-[`src/config/settings.ts`](packages/volto-collective-ai/src/config/settings.ts):
+[`src/config/settings.ts`](packages/volto-collective-ai-settings/src/config/settings.ts):
 
 ```ts
 (config.widgets as any).id.models = ModelsWidget;
@@ -72,7 +72,7 @@ update the matching backend symbol in the same PR (see
 | Contract                                | Where it's defined (backend)                                              | Where it's consumed (frontend)               |
 | --------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------- |
 | Registry JSON shape                     | `interfaces.py` → `MODEL_JSON_SCHEMA`                                     | `ModelsWidget.tsx` (TypeScript types)        |
-| Capabilities vocabulary                 | `vocabularies/capabilities.py` (REST: `/@vocabularies/collective.ai.Capabilities`) | `ModelsWidget.tsx` — `apiFetch('/@vocabularies/…')` |
+| Capabilities vocabulary                 | `vocabularies/capabilities.py` (REST: `/@vocabularies/collective.aisettings.Capabilities`) | `ModelsWidget.tsx` — `apiFetch('/@vocabularies/…')` |
 | Model list per URL                      | `services/list_models.py` (REST: `/@ai-list-models`)                      | `ModelsWidget.tsx` — `loadModels`            |
 | Per-model capability auto-detect        | `services/model_capabilities.py` (REST: `/@ai-model-capabilities`)        | `ModelsWidget.tsx` — `handleModelChange`     |
 | Async `@ai` endpoint (chat/vision/etc.) | `services/ai.py`                                                          | (consumed by addon callers via `fetch`)      |
@@ -159,7 +159,7 @@ make acceptance-test
 Prefer the package-scoped variants when iterating:
 
 ```sh
-pnpm --filter volto-collective-ai <script>
+pnpm --filter volto-collective-ai-settings <script>
 ```
 
 ## Editing rules
@@ -169,7 +169,7 @@ pnpm --filter volto-collective-ai <script>
   before editing.
 - This addon ships **one** widget. New product features that touch
   the data model should land in `ModelsWidget.tsx`, with the matching
-  changes in `backend/src/collective/ai/static/ai-models-widget.js`
+  changes in `backend/src/collective/aisettings/static/ai-models-widget.js`
   (the classic-Plone equivalent) and `interfaces.py`.
 - Don't introduce new top-level addons or duplicate Volto core
   functionality. If something doesn't fit into the existing widget /
@@ -184,8 +184,8 @@ pnpm --filter volto-collective-ai <script>
 
 ## Releasing
 
-The addon publishes independently on npm as `volto-collective-ai`.
+The addon publishes independently on npm as `volto-collective-ai-settings`.
 Use the existing release-it config (`.release-it.json` in
-`packages/volto-collective-ai/`); don't write your own release
+`packages/volto-collective-ai-settings/`); don't write your own release
 automation. Keep `CHANGELOG.md` updated via towncrier entries in
 `news/`.

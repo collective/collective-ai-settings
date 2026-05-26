@@ -1,13 +1,13 @@
-# Collective AI (volto-collective-ai)
+# Collective AI (volto-collective-ai-settings)
 
 Connect your AI models to Plone — the Volto frontend half.
 
-[![npm](https://img.shields.io/npm/v/volto-collective-ai)](https://www.npmjs.com/package/volto-collective-ai)
-[![](https://img.shields.io/badge/-Storybook-ff4785?logo=Storybook&logoColor=white&style=flat-square)](https://collective.github.io/volto-collective-ai/)
+[![npm](https://img.shields.io/npm/v/volto-collective-ai-settings)](https://www.npmjs.com/package/volto-collective-ai-settings)
+[![](https://img.shields.io/badge/-Storybook-ff4785?logo=Storybook&logoColor=white&style=flat-square)](https://collective.github.io/volto-collective-ai-settings/)
 [![CI](https://github.com/collective/collective-ai/actions/workflows/main.yml/badge.svg)](https://github.com/collective/collective-ai/actions/workflows/main.yml)
 
-`volto-collective-ai` is the Volto add-on that ships the
-control-panel editor for the `collective.ai` Plone addon. The
+`volto-collective-ai-settings` is the Volto add-on that ships the
+control-panel editor for the `collective.aisettings` Plone addon. The
 backend half exposes the data model and the REST API; this package
 provides the Volto UI that drives them.
 
@@ -26,7 +26,7 @@ the backend Plone addon, see
   - Pinned-model cards nested under each connection, also with
     drag-and-drop reordering within the connection.
   - Per-model capability checkboxes whose options come from the
-    backend `collective.ai.Capabilities` vocabulary.
+    backend `collective.aisettings.Capabilities` vocabulary.
   - Auto-detection of a model's capabilities when it's selected from
     the dropdown (via the `@ai-model-capabilities` REST helper).
   - Per-model permission gate: a toggle plus checkboxes for common
@@ -40,37 +40,37 @@ Choose the method appropriate to your version of Volto.
 
 ### Volto 18 and later
 
-Add `volto-collective-ai` to your `package.json`.
+Add `volto-collective-ai-settings` to your `package.json`.
 
 ```json
 "dependencies": {
-    "volto-collective-ai": "*"
+    "volto-collective-ai-settings": "*"
 }
 ```
 
 Add the add-on to your `volto.config.js`.
 
 ```javascript
-const addons = ['volto-collective-ai'];
+const addons = ['volto-collective-ai-settings'];
 ```
 
 ### Volto 17 and earlier
 
 ```shell
 npm install -g yo @plone/generator-volto
-yo @plone/volto my-volto-project --addon volto-collective-ai
+yo @plone/volto my-volto-project --addon volto-collective-ai-settings
 cd my-volto-project
 ```
 
-Add `volto-collective-ai` to your `package.json`.
+Add `volto-collective-ai-settings` to your `package.json`.
 
 ```json
 "addons": [
-    "volto-collective-ai"
+    "volto-collective-ai-settings"
 ],
 
 "dependencies": {
-    "volto-collective-ai": "*"
+    "volto-collective-ai-settings": "*"
 }
 ```
 
@@ -83,7 +83,7 @@ yarn start
 
 ## Configuring AI connections
 
-After installing both the Plone backend addon (`collective.ai`) and
+After installing both the Plone backend addon (`collective.aisettings`) and
 this Volto addon, the **AI Settings** control panel appears under
 *Site Setup → General*.
 
@@ -213,7 +213,7 @@ make install
 ### Start developing
 
 Start the backend (in a Docker container that ships the
-`collective.ai` Python addon pre-installed):
+`collective.aisettings` Python addon pre-installed):
 
 ```shell
 make backend-docker-start
@@ -229,7 +229,7 @@ make start
 
 ```
 frontend/
-├── packages/volto-collective-ai/
+├── packages/volto-collective-ai-settings/
 │   └── src/
 │       ├── index.ts                      ← Volto applyConfig entry
 │       ├── config/settings.ts            ← widget + block registration

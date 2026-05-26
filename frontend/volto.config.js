@@ -1,4 +1,4 @@
-const addons = ["volto-collective-ai"];
+const addons = ["volto-collective-ai-settings"];
 const theme = "";
 
 module.exports = {

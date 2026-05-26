@@ -29,8 +29,8 @@ LABEL maintainer="Franco Pellegrini <frapell@gmail.com>" \
       org.label-schema.description="Collective AI backend acceptance image." \
       org.label-schema.vendor="Franco Pellegrini"
 
-ENV CONFIGURE_PACKAGES="plone.restapi,plone.volto,plone.volto.cors,collective.ai"
-ENV APPLY_PROFILES="collective.ai:default"
+ENV CONFIGURE_PACKAGES="plone.restapi,plone.volto,plone.volto.cors,collective.aisettings"
+ENV APPLY_PROFILES="collective.aisettings:default"
 
 # Copy /app from builder
 COPY --from=builder /app /app

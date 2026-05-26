@@ -1,4 +1,4 @@
-# collective.ai
+# collective.aisettings
 
 Connect your AI models to Plone — the backend (Python) half.
 
@@ -34,11 +34,11 @@ UI integration see [`../frontend/README.md`](../frontend/README.md).
 Add the package to your Plone installation. For development:
 
 ```shell
-uv add collective.ai
+uv add collective.aisettings
 ```
 
 Then install the addon profile via *Site Setup → Add-ons* (or by
-adding `collective.ai:default` to the site creation profile list).
+adding `collective.aisettings:default` to the site creation profile list).
 
 ## Configuration
 
@@ -86,8 +86,8 @@ reordering at both scopes.
 ### Capabilities vocabulary
 
 The token strings in `capabilities` are tracked by the
-`collective.ai.Capabilities` named vocabulary (defined in
-[vocabularies/capabilities.py](src/collective/ai/vocabularies/capabilities.py)).
+`collective.aisettings.Capabilities` named vocabulary (defined in
+[vocabularies/capabilities.py](src/collective/aisettings/vocabularies/capabilities.py)).
 They match the strings Ollama returns from `/api/show`, so the
 widget can auto-detect a model's capabilities when it's selected.
 
@@ -105,7 +105,7 @@ A model with `protect_with_permission=true` is only usable if the
 current user holds **at least one** of the Plone permission titles
 listed in `permissions` (e.g. `"View"`, `"Modify portal content"`,
 `"Manage portal"`) on the call's context. The check is
-[permissions.entry_permits](src/collective/ai/permissions.py) which
+[permissions.entry_permits](src/collective/aisettings/permissions.py) which
 in turn calls `AccessControl.getSecurityManager().checkPermission`.
 
 Generic-passthrough connections cannot be gated per-model (they have
@@ -116,7 +116,7 @@ no per-model entries).
 ### From Python — the `IAIService` utility
 
 ```python
-from collective.ai.interfaces import IAIService
+from collective.aisettings.interfaces import IAIService
 from zope.component import queryUtility
 
 service = queryUtility(IAIService)
@@ -164,7 +164,7 @@ If you want to drive HTTP yourself but still let the addon pick the
 right connection:
 
 ```python
-from collective.ai.utils import resolve_model
+from collective.aisettings.utils import resolve_model
 
 entry = resolve_model("completion", override=None)
 # entry is a flat dict: {url, api_key, model, capabilities,
@@ -173,7 +173,7 @@ if entry is None:
     ...
 ```
 
-For the actual HTTP calls, [`client.py`](src/collective/ai/client.py)
+For the actual HTTP calls, [`client.py`](src/collective/aisettings/client.py)
 exposes `chat_completion`, `chat_completion_message` (full assistant
 message), and `embeddings`. The utility uses these internally.
 
@@ -276,7 +276,7 @@ the content object as `context` so the permission gate evaluates
 correctly:
 
 ```python
-from collective.ai.interfaces import IAIService
+from collective.aisettings.interfaces import IAIService
 from zope.component import queryUtility
 
 def my_subscriber(obj, event):
@@ -292,23 +292,23 @@ Where to look when you need to find / change something:
 
 | Concern                                | File                                                                 |
 | -------------------------------------- | -------------------------------------------------------------------- |
-| Registry schema (JSON shape) + `IAIService` interface | [interfaces.py](src/collective/ai/interfaces.py)                     |
-| Capability resolution (overrides, passthrough, etc.) | [utils.py](src/collective/ai/utils.py)                               |
-| Permission gate                        | [permissions.py](src/collective/ai/permissions.py)                   |
-| `IAIService` implementation            | [service.py](src/collective/ai/service.py)                           |
-| Low-level HTTP (chat/embed/etc.)       | [client.py](src/collective/ai/client.py)                             |
-| Async REST endpoint `@ai`              | [services/ai.py](src/collective/ai/services/ai.py)                   |
-| Task polling endpoint `@ai-task`       | [services/task_status.py](src/collective/ai/services/task_status.py) |
-| Task registry (in-memory)              | [services/tasks.py](src/collective/ai/services/tasks.py)             |
-| Helper REST: list models               | [services/list_models.py](src/collective/ai/services/list_models.py) |
-| Helper REST: model capabilities        | [services/model_capabilities.py](src/collective/ai/services/model_capabilities.py) |
-| Capabilities vocabulary                | [vocabularies/capabilities.py](src/collective/ai/vocabularies/capabilities.py) |
-| Helper: query `/v1/models`             | [vocabularies/models.py](src/collective/ai/vocabularies/models.py)   |
-| Classic Plone form + Volto REST adapter | [controlpanels/ai.py](src/collective/ai/controlpanels/ai.py)        |
-| Classic z3c.form widget for the JSONField | [controlpanels/widgets.py](src/collective/ai/controlpanels/widgets.py) |
-| Classic widget template                | [controlpanels/templates/ai_models_widget.pt](src/collective/ai/controlpanels/templates/ai_models_widget.pt) |
-| Classic widget JS                      | [static/ai-models-widget.js](src/collective/ai/static/ai-models-widget.js) |
-| Classic widget CSS                     | [static/ai-models-widget.css](src/collective/ai/static/ai-models-widget.css) |
+| Registry schema (JSON shape) + `IAIService` interface | [interfaces.py](src/collective/aisettings/interfaces.py)                     |
+| Capability resolution (overrides, passthrough, etc.) | [utils.py](src/collective/aisettings/utils.py)                               |
+| Permission gate                        | [permissions.py](src/collective/aisettings/permissions.py)                   |
+| `IAIService` implementation            | [service.py](src/collective/aisettings/service.py)                           |
+| Low-level HTTP (chat/embed/etc.)       | [client.py](src/collective/aisettings/client.py)                             |
+| Async REST endpoint `@ai`              | [services/ai.py](src/collective/aisettings/services/ai.py)                   |
+| Task polling endpoint `@ai-task`       | [services/task_status.py](src/collective/aisettings/services/task_status.py) |
+| Task registry (in-memory)              | [services/tasks.py](src/collective/aisettings/services/tasks.py)             |
+| Helper REST: list models               | [services/list_models.py](src/collective/aisettings/services/list_models.py) |
+| Helper REST: model capabilities        | [services/model_capabilities.py](src/collective/aisettings/services/model_capabilities.py) |
+| Capabilities vocabulary                | [vocabularies/capabilities.py](src/collective/aisettings/vocabularies/capabilities.py) |
+| Helper: query `/v1/models`             | [vocabularies/models.py](src/collective/aisettings/vocabularies/models.py)   |
+| Classic Plone form + Volto REST adapter | [controlpanels/ai.py](src/collective/aisettings/controlpanels/ai.py)        |
+| Classic z3c.form widget for the JSONField | [controlpanels/widgets.py](src/collective/aisettings/controlpanels/widgets.py) |
+| Classic widget template                | [controlpanels/templates/ai_models_widget.pt](src/collective/aisettings/controlpanels/templates/ai_models_widget.pt) |
+| Classic widget JS                      | [static/ai-models-widget.js](src/collective/aisettings/static/ai-models-widget.js) |
+| Classic widget CSS                     | [static/ai-models-widget.css](src/collective/aisettings/static/ai-models-widget.css) |
 
 For internals and editing rules, see [AGENTS.md](./AGENTS.md).
 

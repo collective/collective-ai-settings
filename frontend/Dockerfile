@@ -2,7 +2,7 @@
 ARG VOLTO_VERSION=latest
 FROM plone/frontend-builder:${VOLTO_VERSION} AS builder
 
-COPY --chown=node packages/volto-collective-ai /app/packages/volto-collective-ai
+COPY --chown=node packages/volto-collective-ai-settings /app/packages/volto-collective-ai-settings
 COPY --chown=node volto.config.js /app/
 COPY --chown=node package.json /app/package.json.temp
 COPY --chown=node mrs.developer.json /app/

@@ -8,15 +8,15 @@ about to touch.
 
 ## What this repo is
 
-`collective.ai` is a Plone 6 addon that lets a Plone site call
+`collective.aisettings` is a Plone 6 addon that lets a Plone site call
 OpenAI-compatible LLM services from both Python and the Volto/REST
 frontend. The product is split across two installable packages that
 share a single registry-backed control panel:
 
-- **`collective.ai`** — Python (Plone backend). Source under
-  `backend/src/collective/ai/`.
-- **`volto-collective-ai`** — TypeScript/React Volto addon. Source
-  under `frontend/packages/volto-collective-ai/src/`.
+- **`collective.aisettings`** — Python (Plone backend). Source under
+  `backend/src/collective/aisettings/`.
+- **`volto-collective-ai-settings`** — TypeScript/React Volto addon. Source
+  under `frontend/packages/volto-collective-ai-settings/src/`.
 
 The two halves are independent installs but designed to be used
 together. Either half on its own gives a usable product (classic
@@ -33,12 +33,12 @@ collective-ai/
 ├── backend/
 │   ├── README.md              ← Plone addon user docs + Python API reference
 │   ├── AGENTS.md              ← agent guide for the Plone addon
-│   └── src/collective/ai/     ← addon source (see backend/AGENTS.md)
+│   └── src/collective/aisettings/     ← addon source (see backend/AGENTS.md)
 ├── frontend/
 │   ├── README.md              ← Volto addon user docs + frontend integration
 │   ├── AGENTS.md              ← agent guide for the Volto addon
 │   ├── core/                  ← vendored Volto core (read-only — see its own AGENTS.md)
-│   └── packages/volto-collective-ai/   ← addon source (see frontend/AGENTS.md)
+│   └── packages/volto-collective-ai-settings/   ← addon source (see frontend/AGENTS.md)
 ├── devops/                    ← Docker stack, Ansible, cache settings
 └── docs/                      ← end-user documentation scaffold
 ```
@@ -52,14 +52,14 @@ the others.
 1. **The registry record `IAISettings.models`** — a JSON list of
    connections (URL + optional API key + nested list of pinned model
    definitions). Defined in
-   `backend/src/collective/ai/interfaces.py`. Both UI editors (Volto
+   `backend/src/collective/aisettings/interfaces.py`. Both UI editors (Volto
    `ModelsWidget` and classic `AIModelsWidget`) read and write this
    shape verbatim, so the JSON schema is the contract.
-2. **The `@vocabularies/collective.ai.Capabilities` vocabulary** —
+2. **The `@vocabularies/collective.aisettings.Capabilities` vocabulary** —
    the list of capability tokens (`completion`, `embedding`,
    `vision`, `tools`, `thinking`) used by both widgets and by the
    resolution layer. Defined in
-   `backend/src/collective/ai/vocabularies/capabilities.py`. The
+   `backend/src/collective/aisettings/vocabularies/capabilities.py`. The
    tokens match Ollama's `/api/show` keys so auto-detection works.
 3. **The REST endpoints** —
    - `POST /++api++/@ai` — accepts `{capability, prompt, …, model?,
@@ -71,11 +71,11 @@ the others.
    - `POST /++api++/@ai-model-capabilities` — auto-detects a model's
      capabilities (used by the widgets when the user selects a
      model). Wired in
-     `backend/src/collective/ai/services/configure.zcml`.
+     `backend/src/collective/aisettings/services/configure.zcml`.
 
 ## Capability resolution rules
 
-Implemented in [`backend/src/collective/ai/utils.py`](backend/src/collective/ai/utils.py),
+Implemented in [`backend/src/collective/aisettings/utils.py`](backend/src/collective/aisettings/utils.py),
 shared by both the in-process `IAIService` and the async REST
 endpoint:
 
@@ -95,7 +95,7 @@ override is given — that's deliberate; explicit names are explicit.
 ## Permission gate
 
 Per-model toggle (`protect_with_permission` + `permissions` list).
-Checked in [`backend/src/collective/ai/permissions.py`](backend/src/collective/ai/permissions.py)
+Checked in [`backend/src/collective/aisettings/permissions.py`](backend/src/collective/aisettings/permissions.py)
 via `AccessControl.getSecurityManager().checkPermission(perm,
 context)` with OR semantics over the listed permissions. The REST
 endpoint enforces this against `self.context` (the dexterity content

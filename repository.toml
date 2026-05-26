@@ -11,20 +11,20 @@ section = "Project"
 settings = "towncrier.toml"
 
 [backend.package]
-name = "collective.ai"
+name = "collective.aisettings"
 path = "backend"
-code_path = "src/collective/ai"
+code_path = "src/collective/aisettings"
 changelog = "backend/CHANGELOG.md"
 towncrier_settings = "backend/pyproject.toml"
 base_package = "Products.CMFPlone"
 publish = true
 
 [frontend.package]
-name = "volto-collective-ai"
-path = "frontend/packages/volto-collective-ai"
+name = "volto-collective-ai-settings"
+path = "frontend/packages/volto-collective-ai-settings"
 code_path = "src"
-changelog = "frontend/packages/volto-collective-ai/CHANGELOG.md"
-towncrier_settings = "frontend/packages/volto-collective-ai/towncrier.toml"
+changelog = "frontend/packages/volto-collective-ai-settings/CHANGELOG.md"
+towncrier_settings = "frontend/packages/volto-collective-ai-settings/towncrier.toml"
 base_package = "@plone/volto"
 publish = true
 

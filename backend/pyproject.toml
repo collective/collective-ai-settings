@@ -1,5 +1,5 @@
 [project]
-name = "collective.ai"
+name = "collective.aisettings"
 dynamic = ["version"]
 description = "Connect your AI models to Plone"
 readme = "README.md"
@@ -45,7 +45,7 @@ test = [
 
 [project.urls]
 Homepage = "https://github.com/collective/collective-ai"
-PyPI = "https://pypi.org/project/collective.ai"
+PyPI = "https://pypi.org/project/collective.aisettings"
 Source = "https://github.com/collective/collective-ai"
 Tracker = "https://github.com/collective/collective-ai/issues"
 
@@ -57,7 +57,7 @@ target = "plone"
 managed = false
 
 [tool.hatch.version]
-path = "src/collective/ai/__init__.py"
+path = "src/collective/aisettings/__init__.py"
 
 [build-system]
 requires = ["hatchling"]
@@ -177,9 +177,9 @@ ignore = [
 testpaths = ["tests"]
 
 [tool.coverage.run]
-source_pkgs = ["collective.ai", "tests"]
+source_pkgs = ["collective.aisettings", "tests"]
 branch = true
 parallel = true
 omit = [
-  "src/collective/ai/locales/*.py",
+  "src/collective/aisettings/locales/*.py",
 ]

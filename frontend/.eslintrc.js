@@ -29,8 +29,8 @@ module.exports = {
           ['@plone/volto-slate', `${coreLocation}/packages/volto-slate/src`],
           ['@plone/registry', `${coreLocation}/packages/registry/src`],
           [
-            'volto-collective-ai',
-            './packages/volto-collective-ai/src',
+            'volto-collective-ai-settings',
+            './packages/volto-collective-ai-settings/src',
           ],
           ...addonAliases,
         ],

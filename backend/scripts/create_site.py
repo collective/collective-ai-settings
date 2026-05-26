@@ -1,5 +1,5 @@
 from AccessControl.SecurityManagement import newSecurityManager
-from collective.ai.interfaces import IBrowserLayer
+from collective.aisettings.interfaces import IBrowserLayer
 from Products.CMFPlone.factory import _DEFAULT_PROFILE
 from Products.CMFPlone.factory import addPloneSite
 from Products.GenericSetup.tool import SetupTool
@@ -63,10 +63,10 @@ if site_id not in app.objectIds():
     transaction.commit()
 
     portal_setup: SetupTool = site.portal_setup
-    portal_setup.runAllImportStepsFromProfile("profile-collective.ai:default")
+    portal_setup.runAllImportStepsFromProfile("profile-collective.aisettings:default")
     transaction.commit()
 
     if EXAMPLE_CONTENT:
-        portal_setup.runAllImportStepsFromProfile("profile-collective.ai:initial")
+        portal_setup.runAllImportStepsFromProfile("profile-collective.aisettings:initial")
         transaction.commit()
     app._p_jar.sync()

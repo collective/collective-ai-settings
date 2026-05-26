@@ -1,4 +1,4 @@
-collective.ai Copyright 2026, Franco Pellegrini
+collective.aisettings Copyright 2026, Franco Pellegrini
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License version 2
