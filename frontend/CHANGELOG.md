@@ -8,6 +8,12 @@
 
 <!-- towncrier release notes start -->
 
+## 1.0.0 (2026-05-26)
+
+### Internal
+
+- Initial release. @frapell 
+
 ## 1.0.0-alpha.6 (2026-05-26)
 
 ## 1.0.0-alpha.5 (2026-05-26)

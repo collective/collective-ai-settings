@@ -1,6 +1,6 @@
 {
   "name": "volto-collective-ai-settings",
-  "version": "1.0.0-alpha.6",
+  "version": "1.0.0",
   "description": "Connect your AI models to Plone",
   "main": "src/index.ts",
   "license": "MIT",

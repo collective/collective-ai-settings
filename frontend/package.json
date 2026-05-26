@@ -1,6 +1,6 @@
 {
   "name": "volto-collective-ai-settings-dev",
-  "version": "1.0.0-alpha.6",
+  "version": "1.0.0",
   "description": "Connect your AI models to Plone",
   "author": "Franco Pellegrini",
   "homepage": "https://github.com/collective/collective-ai",
