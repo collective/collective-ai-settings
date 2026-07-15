@@ -1,1 +1,0 @@
-Other add-ons can now register AI tools through the component architecture — as named `IAITool` utilities (global) or `IAIToolProvider` subscription adapters (context-aware) — which the agent auto-executes during a call. @frapell

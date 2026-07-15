@@ -1,1 +1,0 @@
-The `IAIService` utility was redesigned around pydantic-ai: a new `run()` method (with `output_type`/`use_tools`), and `chat`/`think`/`analyze_image` gained `request`/`output_type`/`use_tools` keywords. `run_call` is now tool-less and worker-safe; `tool_call` remains a raw passthrough. @frapell

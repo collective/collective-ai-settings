@@ -9,6 +9,19 @@
 
 <!-- towncrier release notes start -->
 
+## 1.1.0 (2026-07-15)
+
+
+### Breaking changes:
+
+- The `IAIService` utility was redesigned around pydantic-ai: a new `run()` method (with `output_type`/`use_tools`), and `chat`/`think`/`analyze_image` gained `request`/`output_type`/`use_tools` keywords. `run_call` is now tool-less and worker-safe; `tool_call` remains a raw passthrough. @frapell 
+
+
+### New features:
+
+- AI calls (chat/think/vision) now run through [pydantic-ai](https://ai.pydantic.dev) agents instead of raw HTTP, adding multimodal input, an agentic tool-execution loop and structured (typed) output. @frapell 
+- Other add-ons can now register AI tools through the component architecture — as named `IAITool` utilities (global) or `IAIToolProvider` subscription adapters (context-aware) — which the agent auto-executes during a call. @frapell 
+
 ## 1.0.0 (2026-05-26)
 
 
