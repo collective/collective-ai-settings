@@ -18,11 +18,14 @@ contracts described below.
 
 ```
 backend/src/collective/aisettings/
-├── interfaces.py              ← IAISettings (JSON schema) + IAIService
+├── interfaces.py              ← IAISettings (JSON schema) + IAIService + IAITool / IAIToolProvider
 ├── utils.py                   ← resolve_model / pick_model / _flatten
-├── service.py                 ← AIService (registered as IAIService utility)
+├── service.py                 ← AIService (registered as IAIService utility; pydantic-ai)
+├── models.py                  ← build_model (OpenAIChatModel) + JSON-schema→pydantic output
+├── tools.py                   ← AITool base + collect_tools (ZCA tool registry)
+├── deps.py                    ← AIDeps (RunContext dependencies for tools)
 ├── permissions.py             ← entry_permits — Plone permission gate
-├── client.py                  ← low-level HTTP (chat_completion, embeddings)
+├── client.py                  ← OpenAI SDK: embeddings + raw_tool_call passthrough
 ├── controlpanels/
 │   ├── ai.py                  ← classic RegistryEditForm + Volto REST adapter
 │   ├── widgets.py             ← classic z3c.form widget for the JSONField
@@ -134,6 +137,22 @@ common permission to appear as a checkbox, edit the
 and in
 `frontend/packages/volto-collective-ai-settings/src/components/ModelsWidget.tsx`.
 
+## Tools (ZCA) and the request-thread invariant
+
+`service.run` (used by `chat`/`think`/`analyze_image`) builds a
+pydantic-ai `Agent` and runs it synchronously. When `use_tools=True`
+(the default) it offers the agent every tool collected by
+`tools.collect_tools(context, capability)` — global `IAITool` named
+utilities plus `IAIToolProvider` subscription adapters on the context —
+filtered by each tool's `capabilities` and `permission` gate. Tools
+receive an `AIDeps` (context/request/security manager) via the pydantic-ai
+`RunContext`.
+
+Because tools execute **inside** the agent loop and may touch Plone
+security and the ZODB, a tool-enabled run must happen in the request
+thread. See `models.set_test_model()` for the test seam that swaps in a
+pydantic-ai `TestModel`/`FunctionModel` so the suite never hits a network.
+
 ## Async / worker thread invariants
 
 `services/ai.py` resolves the model and runs the permission check in
@@ -146,9 +165,11 @@ that calls `service.run_call`. The worker:
 - must complete or fail through `complete_task` / `fail_task` so the
   polling endpoint can report the result
 
-`run_call` itself is pure outbound HTTP; if you add behavior that
-needs Zope state, do it before the `Thread(...).start()` call, not
-inside the worker.
+`run_call` is **tool-less** and pure outbound HTTP (it never executes
+registered tools). Async chat/think/vision calls with `use_tools`
+enabled are therefore rejected by the endpoint with HTTP 400 — they must
+run synchronously. If you add behavior that needs Zope state, do it
+before the `Thread(...).start()` call, not inside the worker.
 
 ## Permission gate semantics
 

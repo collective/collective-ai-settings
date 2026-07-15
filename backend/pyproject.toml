@@ -31,6 +31,9 @@ dependencies = [
     "plone.api",
     "plone.restapi",
     "plone.volto",
+    # AI runtime: pydantic-ai agents + the openai SDK. The [openai] extra is
+    # also used directly for embeddings, which pydantic-ai does not cover.
+    "pydantic-ai-slim[openai]>=2.0,<3",
 ]
 
 [project.optional-dependencies]
@@ -163,7 +166,8 @@ order-by-type = false
 preview = true
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["E501", "RUF001", "S101"]
+# Test tool fixtures declare JSON-schema dicts as class attributes (RUF012).
+"tests/*" = ["E501", "RUF001", "RUF012", "S101"]
 
 [tool.check-manifest]
 ignore = [

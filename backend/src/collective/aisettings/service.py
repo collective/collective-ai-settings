@@ -1,20 +1,34 @@
-"""Default :class:`IAIService` implementation, registered as a global utility."""
+"""Default :class:`IAIService` implementation, registered as a global utility.
 
+Chat/think/vision go through `pydantic-ai <https://ai.pydantic.dev>`_ agents
+(:meth:`AIService.run`), which can auto-execute tools registered through the
+component architecture (see :mod:`collective.aisettings.tools`). Embeddings and
+the raw function-calling passthrough use the OpenAI SDK directly
+(:mod:`collective.aisettings.client`).
+"""
+
+from AccessControl import getSecurityManager
 from collective.aisettings import logger
-from collective.aisettings.client import chat_completion
-from collective.aisettings.client import chat_completion_message
-from collective.aisettings.client import embeddings
+from collective.aisettings.client import embeddings as _embeddings
+from collective.aisettings.client import raw_tool_call
+from collective.aisettings.deps import AIDeps
 from collective.aisettings.interfaces import IAIService
+from collective.aisettings.models import build_model
 from collective.aisettings.permissions import entry_permits
+from collective.aisettings.tools import collect_tools
 from collective.aisettings.utils import resolve_model
 from plone import api
+from pydantic_ai import Agent
+from pydantic_ai import BinaryContent
+from pydantic_ai import ImageUrl
 from zope.interface import implementer
+
+import base64
+import binascii
 
 
 # REST/API capability name → registry-vocabulary token used to resolve a
-# matching model entry. Keeping the mapping here so both the facade methods
-# and the async REST endpoint share the same understanding of what e.g.
-# "chat" means in terms of model selection.
+# matching model entry. Shared by the facade methods and the REST endpoint.
 CAPABILITY_TOKEN = {
     "chat": "completion",
     "think": "thinking",
@@ -24,26 +38,37 @@ CAPABILITY_TOKEN = {
 }
 
 
-def _build_messages(prompt, system=None):
-    messages: list[dict] = []
-    if system:
-        messages.append({"role": "system", "content": system})
-    if isinstance(prompt, str):
-        messages.append({"role": "user", "content": prompt})
-    elif prompt:
-        messages.extend(prompt)
-    return messages
+def _image_content(prompt, image):
+    """Build a pydantic-ai multimodal user prompt from text + an image.
+
+    ``image`` may be an ``http(s)`` URL or an inline ``data:`` URI.
+    """
+    parts: list = []
+    if prompt:
+        parts.append(prompt)
+    if not image:
+        return parts
+    if isinstance(image, str) and image.startswith("data:"):
+        try:
+            header, encoded = image.split(",", 1)
+            media_type = header[5:].split(";")[0] or "image/png"
+            parts.append(
+                BinaryContent(data=base64.b64decode(encoded), media_type=media_type)
+            )
+        except (ValueError, binascii.Error):
+            logger.warning("Could not decode inline image data URI; ignoring.")
+    else:
+        parts.append(ImageUrl(url=image))
+    return parts
 
 
 @implementer(IAIService)
 class AIService:
-    """Resolve the configured model and dispatch the call to :mod:`client`."""
+    """Resolve the configured model and dispatch the call to pydantic-ai."""
 
-    # ---- low-level methods (shared with the async REST endpoint) ----
+    # ---- model resolution (request thread; reads the registry) ----
 
     def resolve_for(self, capability: str, model_override: str | None):
-        """Return a model entry for ``capability`` (or None). Request-thread
-        only — reads the plone registry."""
         token = CAPABILITY_TOKEN.get(capability)
         if token is None:
             return None
@@ -55,135 +80,180 @@ class AIService:
             )
         return entry
 
-    def run_call(self, capability: str, entry: dict, data: dict) -> dict:
-        """Run the actual outbound HTTP call. Worker-thread safe.
+    def _gate_context(self, context):
+        return context if context is not None else api.portal.get()
 
-        The permission gate (if any) must have already been checked by the
-        caller before invoking ``run_call``.
-        """
-        url = entry["url"]
-        api_key = entry.get("api_key") or None
-        model_name = entry["model"]
+    def _build_agent(self, entry, *, system=None, output_type=None, tools=None):
+        model = build_model(entry)
+        kwargs = {"deps_type": AIDeps, "tools": tools or []}
+        if system:
+            kwargs["system_prompt"] = system
+        if output_type is not None:
+            kwargs["output_type"] = output_type
+        return Agent(model, **kwargs)
 
-        if capability == "chat":
-            text = chat_completion(
-                url,
-                api_key,
-                model_name,
-                _build_messages(data.get("prompt"), data.get("system")),
-                think=False,
-            )
-            return {"response": text}
+    # ---- high-level agentic facade (request thread) ----
 
-        if capability == "think":
-            text = chat_completion(
-                url,
-                api_key,
-                model_name,
-                _build_messages(data.get("prompt"), data.get("system")),
-            )
-            return {"response": text}
-
-        if capability == "vision":
-            content = [
-                {"type": "text", "text": data.get("prompt") or ""},
-                {"type": "image_url", "image_url": {"url": data.get("image")}},
-            ]
-            text = chat_completion(
-                url,
-                api_key,
-                model_name,
-                [{"role": "user", "content": content}],
-                think=False,
-            )
-            return {"response": text}
-
-        if capability == "embed":
-            text = data.get("input")
-            if text is None:
-                text = data.get("text") or ""
-            single = isinstance(text, str)
-            inputs = [text] if single else list(text)
-            vectors = embeddings(url, api_key, model_name, inputs)
-            if vectors is None:
-                return {"embedding": None}
-            if single:
-                return {"embedding": vectors[0] if vectors else None}
-            return {"embedding": vectors}
-
-        if capability == "tools":
-            message = chat_completion_message(
-                url,
-                api_key,
-                model_name,
-                data.get("messages") or [],
-                tools=data.get("tools") or [],
-                think=False,
-            )
-            return {"response": message}
-
-        raise ValueError(f"unknown capability {capability!r}")
-
-    # ---- high-level facade (request-thread, resolve + permit + run) ----
-
-    def _call(
+    def run(
         self,
-        capability: str,
-        model_override: str | None,
-        data: dict,
+        prompt,
+        capability="chat",
+        model=None,
+        system=None,
         context=None,
-        result_key: str = "response",
+        request=None,
+        output_type=None,
+        use_tools=True,
+        message_history=None,
     ):
-        entry = self.resolve_for(capability, model_override)
+        entry = self.resolve_for(capability, model)
         if entry is None:
             return None
-        gate_ctx = context if context is not None else api.portal.get()
+        gate_ctx = self._gate_context(context)
         if not entry_permits(entry, gate_ctx):
             logger.info(
-                "AI call for capability %r denied by permission gate on context %r.",
+                "AI call for capability %r denied by permission gate on %r.",
                 capability,
                 getattr(gate_ctx, "absolute_url", lambda: gate_ctx)(),
             )
             return None
-        return self.run_call(capability, entry, data).get(result_key)
+        tools = collect_tools(gate_ctx, capability) if use_tools else []
+        deps = AIDeps(
+            context=gate_ctx,
+            request=request,
+            security_manager=getSecurityManager(),
+        )
+        agent = self._build_agent(
+            entry, system=system, output_type=output_type, tools=tools
+        )
+        result = agent.run_sync(prompt, deps=deps, message_history=message_history)
+        return result.output
 
-    def chat(self, prompt, model=None, system=None, context=None):
-        return self._call(
-            "chat",
-            model,
-            {"prompt": prompt, "system": system},
+    def chat(
+        self,
+        prompt,
+        model=None,
+        system=None,
+        context=None,
+        request=None,
+        output_type=None,
+        use_tools=True,
+    ):
+        return self.run(
+            prompt,
+            capability="chat",
+            model=model,
+            system=system,
             context=context,
+            request=request,
+            output_type=output_type,
+            use_tools=use_tools,
         )
 
-    def think(self, prompt, model=None, system=None, context=None):
-        return self._call(
-            "think",
-            model,
-            {"prompt": prompt, "system": system},
+    def think(
+        self,
+        prompt,
+        model=None,
+        system=None,
+        context=None,
+        request=None,
+        output_type=None,
+        use_tools=True,
+    ):
+        return self.run(
+            prompt,
+            capability="think",
+            model=model,
+            system=system,
             context=context,
+            request=request,
+            output_type=output_type,
+            use_tools=use_tools,
         )
 
-    def analyze_image(self, prompt, image, model=None, context=None):
-        return self._call(
-            "vision",
-            model,
-            {"prompt": prompt, "image": image},
+    def analyze_image(
+        self,
+        prompt,
+        image,
+        model=None,
+        context=None,
+        request=None,
+        output_type=None,
+        use_tools=True,
+    ):
+        return self.run(
+            _image_content(prompt, image),
+            capability="vision",
+            model=model,
             context=context,
+            request=request,
+            output_type=output_type,
+            use_tools=use_tools,
         )
+
+    # ---- embeddings + raw tool passthrough (OpenAI SDK) ----
+
+    def _embed(self, entry, text):
+        single = isinstance(text, str)
+        inputs = [text] if single else list(text)
+        vectors = _embeddings(
+            entry["url"], entry.get("api_key") or None, entry["model"], inputs
+        )
+        if vectors is None:
+            return None
+        if single:
+            return vectors[0] if vectors else None
+        return vectors
 
     def embed(self, text, model=None, context=None):
-        return self._call(
-            "embed",
-            model,
-            {"input": text},
-            context=context,
-            result_key="embedding",
-        )
+        entry = self.resolve_for("embed", model)
+        if entry is None:
+            return None
+        gate_ctx = self._gate_context(context)
+        if not entry_permits(entry, gate_ctx):
+            return None
+        return self._embed(entry, text)
 
     def tool_call(self, messages, tools, model=None, context=None):
-        return self._call(
-            "tools",
-            model,
-            {"messages": messages, "tools": tools},
-            context=context,
+        entry = self.resolve_for("tools", model)
+        if entry is None:
+            return None
+        gate_ctx = self._gate_context(context)
+        if not entry_permits(entry, gate_ctx):
+            return None
+        return raw_tool_call(
+            entry["url"], entry.get("api_key") or None, entry["model"], messages, tools
         )
+
+    # ---- worker-safe, tool-less call (used by the async REST endpoint) ----
+
+    def _prompt_for(self, capability, data):
+        if capability == "vision":
+            return _image_content(data.get("prompt") or "", data.get("image"))
+        return data.get("prompt") or ""
+
+    def run_call(self, capability: str, entry: dict, data: dict) -> dict:
+        """Run a tool-less AI call against a pre-resolved ``entry``.
+
+        Outbound HTTP only; touches no Zope state and executes no registered
+        tools — safe on a worker thread.
+        """
+        if capability == "embed":
+            text = data.get("input")
+            if text is None:
+                text = data.get("text") or ""
+            return {"embedding": self._embed(entry, text)}
+
+        if capability == "tools":
+            message = raw_tool_call(
+                entry["url"],
+                entry.get("api_key") or None,
+                entry["model"],
+                data.get("messages") or [],
+                data.get("tools") or [],
+            )
+            return {"response": message}
+
+        agent = self._build_agent(entry, system=data.get("system"), tools=[])
+        result = agent.run_sync(self._prompt_for(capability, data), deps=AIDeps())
+        return {"response": result.output}

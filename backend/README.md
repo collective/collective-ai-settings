@@ -15,9 +15,12 @@ UI integration see [`../frontend/README.md`](../frontend/README.md).
   on both classic Plone (`@@ai-settings`) and Volto
   (`@controlpanels/ai-settings`). Both UIs edit the same
   registry-backed JSON list.
-- **`IAIService` global utility** with methods for chat, reasoning,
-  vision, embeddings, and tool/function calls.
-- **Async `@ai` REST endpoint** with a polling counterpart
+- **`IAIService` global utility**, backed by
+  [pydantic-ai](https://ai.pydantic.dev), with methods for chat,
+  reasoning, vision, embeddings, structured output, and tool calls.
+- **Pluggable tools** — other add-ons register `IAITool` utilities or
+  `IAIToolProvider` adapters that the agent auto-executes during a call.
+- **`@ai` REST endpoint** (sync by default) with a polling counterpart
   `@ai-task/<id>` so calls that take minutes don't hit proxy /
   load-balancer timeouts.
 - **Capability-based model resolution** (`completion`, `embedding`,
@@ -142,7 +145,24 @@ vec = service.embed("Hello world")
 # Reasoning model
 answer = service.think("Walk me through this proof: …")
 
-# Tool / function calling — returns the full assistant message dict
+# Structured output — pass a pydantic model (or any type) as output_type
+from pydantic import BaseModel
+
+class Article(BaseModel):
+    title: str
+    tags: list[str]
+
+article = service.chat("Extract metadata from: …", output_type=Article)
+# -> an Article instance
+
+# Server-executed tools: chat/think/analyze_image run a pydantic-ai agent
+# that auto-executes every tool registered by add-ons (see "Registering
+# tools" below). Pass use_tools=False to disable.
+text = service.chat("What's the weather in Rosario?", context=self.context)
+text = service.chat("…", use_tools=False)
+
+# Raw function-calling passthrough — returns the full assistant message dict
+# with *unexecuted* tool_calls for you to run yourself.
 reply = service.tool_call(
     messages=[{"role": "user", "content": "…"}],
     tools=[{"type": "function", "function": {…}}],
@@ -153,10 +173,14 @@ reply = service.tool_call(
 text = service.chat("…", context=self.context)
 ```
 
+`chat`, `think` and `analyze_image` accept `output_type=` (structured
+output), `use_tools=` (default `True`) and `request=` (made available to
+tools). They delegate to the generic `service.run(prompt, capability=…)`.
+
 All methods return `None` when no matching model is configured or
 when the permission gate denies the call (the denial is logged at
-INFO level). Network and parsing failures are logged at WARNING
-level and also return `None`.
+INFO level). Network failures are logged at WARNING level and also
+return `None`.
 
 ### From Python — lower-level helpers
 
@@ -173,9 +197,77 @@ if entry is None:
     ...
 ```
 
-For the actual HTTP calls, [`client.py`](src/collective/aisettings/client.py)
-exposes `chat_completion`, `chat_completion_message` (full assistant
-message), and `embeddings`. The utility uses these internally.
+Chat/think/vision go through [pydantic-ai](https://ai.pydantic.dev)
+models built in [`models.py`](src/collective/aisettings/models.py)
+(`build_model(entry)`). For the bits pydantic-ai does not cover,
+[`client.py`](src/collective/aisettings/client.py) exposes `embeddings`
+and `raw_tool_call` on top of the OpenAI SDK.
+
+### Registering tools (other add-ons)
+
+`chat`/`think`/`analyze_image` run an agent that can call tools your
+add-on contributes through the component architecture. Subclass
+`AITool`, declare a JSON-Schema for the arguments and implement `run`:
+
+```python
+from collective.aisettings.tools import AITool
+
+class WeatherTool(AITool):
+    name = "get_weather"
+    description = "Return the current weather for a city."
+    parameters = {
+        "type": "object",
+        "properties": {"city": {"type": "string"}},
+        "required": ["city"],
+    }
+    permission = "View"          # optional Plone permission gate (title)
+    capabilities = ("chat",)     # optional; default = all tool-enabled runs
+
+    def run(self, ctx, city):
+        # ctx.deps is an AIDeps with .context / .request / .security_manager
+        portal = ctx.deps.context
+        return {"city": city, "temp_c": 21}
+```
+
+Register it as a **named utility** (global, offered on every run):
+
+```xml
+<utility
+    factory=".tools.WeatherTool"
+    provides="collective.aisettings.interfaces.IAITool"
+    name="get_weather"
+    />
+```
+
+For tools whose availability depends on the content object the call is
+rooted at, register an `IAIToolProvider` **subscription adapter** that
+yields tools per context:
+
+```python
+from collective.aisettings.interfaces import IAIToolProvider
+from zope.interface import implementer
+
+@implementer(IAIToolProvider)
+class MyContextTools:
+    def __init__(self, context):
+        self.context = context
+
+    def get_tools(self):
+        return [WeatherTool()] if IMyType.providedBy(self.context) else []
+```
+
+```xml
+<subscriber
+    provides="collective.aisettings.interfaces.IAIToolProvider"
+    for="*"
+    factory=".tools.MyContextTools"
+    />
+```
+
+Tools are filtered by their `capabilities` and the `permission` gate
+before being offered to the model. Because tools execute inside the
+agent loop (touching Plone security and the ZODB), tool-enabled runs
+happen in the request thread — see the async note below.
 
 ### From HTTP / Volto — the `@ai` endpoint
 
@@ -195,9 +287,20 @@ Content-Type: application/json
   "capability": "chat",
   "prompt": "Summarise …",
   "system": "You are a helpful editor.",
-  "model": "llama3.1:70b"
+  "model": "llama3.1:70b",
+  "use_tools": true,            // optional (chat/think/vision); default true
+  "output_schema": {            // optional (chat/think/vision); JSON Schema
+    "type": "object",
+    "properties": {"summary": {"type": "string"}},
+    "required": ["summary"]
+  }
 }
 ```
+
+For chat/think/vision the endpoint runs a pydantic-ai agent that
+auto-executes registered tools (set `"use_tools": false` to disable).
+When `output_schema` is given (a JSON object schema) the `response` is a
+structured object matching it instead of plain text.
 
 Synchronous response (HTTP 200):
 
@@ -213,7 +316,10 @@ On a synchronous failure the endpoint returns HTTP 502 with
 
 #### Async mode
 
-Add `"async": true` to the body. Response (HTTP 202):
+Add `"async": true` to the body. Async runs are **tool-less** (the worker
+thread has no Plone security context), so an async chat/think/vision call
+with `use_tools` enabled is rejected with HTTP 400 — run it synchronously
+or set `"use_tools": false`. Response (HTTP 202):
 
 ```json
 { "task_id": "1244133e-7506-…", "status": "running" }
@@ -244,16 +350,18 @@ HTTP 403.
 
 #### Body shapes per capability
 
-| `capability` | required body                                | optional   | `result` key  |
-| ------------ | -------------------------------------------- | ---------- | ------------- |
-| `chat`       | `prompt`                                     | `system`   | `response`    |
-| `think`      | `prompt`                                     | `system`   | `response`    |
-| `vision`     | `prompt`, `image` (URL or `data:` URI)       | —          | `response`    |
-| `embed`      | `input` (string or list of strings)          | —          | `embedding`   |
-| `tools`      | `messages` (array), `tools` (array)          | —          | `response`    |
+| `capability` | required body                                | optional                                  | `result` key  |
+| ------------ | -------------------------------------------- | ----------------------------------------- | ------------- |
+| `chat`       | `prompt`                                     | `system`, `use_tools`, `output_schema`    | `response`    |
+| `think`      | `prompt`                                     | `system`, `use_tools`, `output_schema`    | `response`    |
+| `vision`     | `prompt`, `image` (URL or `data:` URI)       | `use_tools`, `output_schema`              | `response`    |
+| `embed`      | `input` (string or list of strings)          | —                                         | `embedding`   |
+| `tools`      | `messages` (array), `tools` (array)          | —                                         | `response`    |
 
 All variants accept an optional top-level `model` to override
-capability-based selection.
+capability-based selection. The `tools` capability is the raw
+passthrough (unexecuted `tool_calls`); for server-executed tools use
+`chat`/`think`/`vision` with `use_tools` (the default).
 
 ### Helper endpoints (for control-panel widgets)
 
@@ -296,8 +404,11 @@ Where to look when you need to find / change something:
 | Capability resolution (overrides, passthrough, etc.) | [utils.py](src/collective/aisettings/utils.py)                               |
 | Permission gate                        | [permissions.py](src/collective/aisettings/permissions.py)                   |
 | `IAIService` implementation            | [service.py](src/collective/aisettings/service.py)                           |
-| Low-level HTTP (chat/embed/etc.)       | [client.py](src/collective/aisettings/client.py)                             |
-| Async REST endpoint `@ai`              | [services/ai.py](src/collective/aisettings/services/ai.py)                   |
+| pydantic-ai model construction         | [models.py](src/collective/aisettings/models.py)                             |
+| ZCA tool registry (`IAITool`)          | [tools.py](src/collective/aisettings/tools.py)                               |
+| Tool run dependencies (`AIDeps`)       | [deps.py](src/collective/aisettings/deps.py)                                 |
+| Embeddings + raw tool passthrough (OpenAI SDK) | [client.py](src/collective/aisettings/client.py)                     |
+| REST endpoint `@ai`                    | [services/ai.py](src/collective/aisettings/services/ai.py)                   |
 | Task polling endpoint `@ai-task`       | [services/task_status.py](src/collective/aisettings/services/task_status.py) |
 | Task registry (in-memory)              | [services/tasks.py](src/collective/aisettings/services/tasks.py)             |
 | Helper REST: list models               | [services/list_models.py](src/collective/aisettings/services/list_models.py) |

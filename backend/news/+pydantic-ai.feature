@@ -1,0 +1,1 @@
+AI calls (chat/think/vision) now run through [pydantic-ai](https://ai.pydantic.dev) agents instead of raw HTTP, adding multimodal input, an agentic tool-execution loop and structured (typed) output. @frapell

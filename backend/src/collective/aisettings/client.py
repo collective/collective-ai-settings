@@ -1,92 +1,75 @@
-"""Low-level HTTP helpers for OpenAI-compatible AI services."""
+"""OpenAI-SDK helpers for the bits pydantic-ai does not cover.
+
+pydantic-ai handles chat/think/vision (see :mod:`collective.aisettings.models`
+and :mod:`collective.aisettings.service`). Two things it does not:
+
+- **Embeddings** — there is no embeddings API in pydantic-ai.
+- **Raw function-calling passthrough** — returning *unexecuted* ``tool_calls``
+  for the caller to run (the legacy :meth:`IAIService.tool_call` contract).
+
+Both go straight through the ``openai`` client here.
+"""
 
 from collective.aisettings import logger
-
-import json
-import urllib.error
-import urllib.request
+from collective.aisettings.models import openai_base_url
+from openai import OpenAI
 
 
-DEFAULT_TIMEOUT = 600
+# OpenAI clients hold an httpx connection pool; reuse one per connection.
+_CLIENT_CACHE: dict[tuple[str, str], OpenAI] = {}
 
 
-def _post_json(
-    url: str,
-    body: dict,
-    api_key: str | None = None,
-    timeout: int = DEFAULT_TIMEOUT,
-) -> dict | None:
-    encoded = json.dumps(body).encode("utf-8")
-    request = urllib.request.Request(  # noqa: S310 - URI is admin-supplied
-        url, data=encoded, method="POST"
-    )
-    request.add_header("Content-Type", "application/json")
-    if api_key:
-        request.add_header("Authorization", f"Bearer {api_key}")
-    try:
-        with urllib.request.urlopen(  # noqa: S310 - URI is admin-supplied
-            request, timeout=timeout
-        ) as response:
-            return json.loads(response.read().decode("utf-8"))
-    except (urllib.error.URLError, TimeoutError, ValueError) as exc:
-        logger.warning("AI POST %s failed: %s", url, exc)
-        return None
-
-
-def chat_completion(
-    uri: str,
-    api_key: str | None,
-    model: str,
-    messages: list[dict],
-    **extra,
-) -> str | None:
-    """POST a chat completion request and return the assistant message text."""
-    endpoint = uri.rstrip("/") + "/v1/chat/completions"
-    body = {"model": model, "messages": messages, **extra}
-    payload = _post_json(endpoint, body, api_key)
-    if not payload:
-        return None
-    try:
-        return payload["choices"][0]["message"]["content"]
-    except (KeyError, IndexError, TypeError):
-        logger.warning("Unexpected chat completion response: %s", payload)
-        return None
-
-
-def chat_completion_message(
-    uri: str,
-    api_key: str | None,
-    model: str,
-    messages: list[dict],
-    **extra,
-) -> dict | None:
-    """Return the full assistant message dict (with `tool_calls` etc.)."""
-    endpoint = uri.rstrip("/") + "/v1/chat/completions"
-    body = {"model": model, "messages": messages, **extra}
-    payload = _post_json(endpoint, body, api_key)
-    if not payload:
-        return None
-    try:
-        return payload["choices"][0]["message"]
-    except (KeyError, IndexError, TypeError):
-        logger.warning("Unexpected chat completion response: %s", payload)
-        return None
+def get_client(url: str, api_key: str | None) -> OpenAI:
+    """Return a (cached) ``openai.OpenAI`` client for a connection URL."""
+    key = (url, api_key or "")
+    client = _CLIENT_CACHE.get(key)
+    if client is None:
+        client = OpenAI(
+            base_url=openai_base_url(url),
+            # Local servers (Ollama, vLLM) ignore the key but the client
+            # requires a non-empty string.
+            api_key=api_key or "unused",
+        )
+        _CLIENT_CACHE[key] = client
+    return client
 
 
 def embeddings(
-    uri: str,
+    url: str,
     api_key: str | None,
     model: str,
     inputs: list[str],
 ) -> list[list[float]] | None:
-    """POST an embeddings request and return a list of embedding vectors."""
-    endpoint = uri.rstrip("/") + "/v1/embeddings"
-    body = {"model": model, "input": inputs}
-    payload = _post_json(endpoint, body, api_key)
-    if not payload:
+    """Return one embedding vector per input string, or ``None`` on failure."""
+    try:
+        response = get_client(url, api_key).embeddings.create(model=model, input=inputs)
+    except Exception as exc:
+        logger.warning("AI embeddings call to %s failed: %s", url, exc)
+        return None
+    return [item.embedding for item in response.data]
+
+
+def raw_tool_call(
+    url: str,
+    api_key: str | None,
+    model: str,
+    messages: list[dict],
+    tools: list[dict],
+) -> dict | None:
+    """Raw function-calling passthrough.
+
+    Returns the full assistant message dict (including any *unexecuted*
+    ``tool_calls``), or ``None`` on failure.
+    """
+    try:
+        response = get_client(url, api_key).chat.completions.create(
+            model=model, messages=messages, tools=tools
+        )
+    except Exception as exc:
+        logger.warning("AI tool call to %s failed: %s", url, exc)
         return None
     try:
-        return [item["embedding"] for item in payload.get("data", [])]
-    except (KeyError, TypeError):
-        logger.warning("Unexpected embeddings response: %s", payload)
+        return response.choices[0].message.model_dump()
+    except (IndexError, AttributeError):
+        logger.warning("Unexpected tool call response: %s", response)
         return None
