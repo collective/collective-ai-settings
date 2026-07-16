@@ -9,6 +9,13 @@
 
 <!-- towncrier release notes start -->
 
+## 1.2.0 (2026-07-16)
+
+
+### New features:
+
+- Add optional environment-driven AI connections: set ``COLLECTIVE_AISETTINGS_CONNECTIONS`` to a JSON file (same shape as the control panel, plus an ``api_key_env`` field to read keys from the environment). File connections are merged before the registry ones (file-first precedence) and reloaded on change. @frapell 
+
 ## 1.1.0 (2026-07-15)
 
 
