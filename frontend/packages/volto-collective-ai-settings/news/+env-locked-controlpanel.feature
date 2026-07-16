@@ -1,1 +1,0 @@
-Show connections managed by the `COLLECTIVE_AISETTINGS_CONNECTIONS` environment file read-only and greyed out at the top of the control panel (confirmation that the file loaded), while keeping the panel below editable for adding your own connections. API keys are never shown: an `api_key_env` reference displays only the variable name.

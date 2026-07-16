@@ -7,6 +7,34 @@
 -->
 
 <!-- towncrier release notes start -->
+## 1.3.0 (2026-07-16)
+
+### Backend
+
+
+#### New features:
+
+- Add an "Only for authenticated" per-model gate that denies anonymous callers without requiring a specific permission. Available in both the classic-UI and Volto control panels. 
+- When ``COLLECTIVE_AISETTINGS_CONNECTIONS`` is set and the file loads without errors, the control panel shows the file-managed connections read-only and greyed out at the top as a load-confirmation, while the panel below stays editable so admins can still add their own connections. Adds a ``@ai-file-connections`` REST service that reports this state without ever exposing API keys (an ``api_key_env`` reference surfaces only its variable name). 
+
+
+
+### Frontend
+
+#### Feature
+
+- Add an "Only for authenticated" per-model checkbox to the control panel that denies anonymous callers without requiring a specific permission. 
+- Show connections managed by the `COLLECTIVE_AISETTINGS_CONNECTIONS` environment file read-only and greyed out at the top of the control panel (confirmation that the file loaded), while keeping the panel below editable for adding your own connections. API keys are never shown: an `api_key_env` reference displays only the variable name. 
+
+
+
+### Project
+
+No significant changes.
+
+
+
+
 ## 1.2.0 (2026-07-16)
 
 ### Backend
