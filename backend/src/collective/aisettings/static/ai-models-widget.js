@@ -13,7 +13,8 @@
  *       url: "...",
  *       api_key: "...",
  *       models: [
- *         { model, capabilities[], protect_with_permission, permissions[] }
+ *         { model, capabilities[], only_for_authenticated,
+ *           protect_with_permission, permissions[] }
  *       ]
  *     }
  *   ]
@@ -319,6 +320,7 @@
             conn.models.push({
               model: "",
               capabilities: [],
+              only_for_authenticated: false,
               protect_with_permission: false,
               permissions: [],
             });
@@ -449,6 +451,7 @@
 
       body.appendChild(renderModelField(conn, mdl, connIndex, modelIndex, models, state));
       body.appendChild(renderCapabilities(mdl));
+      body.appendChild(renderAuthenticatedToggle(mdl));
       body.appendChild(renderProtectToggle(mdl));
       if (mdl.protect_with_permission) {
         body.appendChild(renderPermissions(mdl));
@@ -547,6 +550,21 @@
         );
       });
       return fieldset;
+    }
+
+    function renderAuthenticatedToggle(mdl) {
+      var checkbox = el("input", {
+        type: "checkbox",
+        onchange: function (e) {
+          mdl.only_for_authenticated = e.target.checked;
+          commit();
+        },
+      });
+      if (mdl.only_for_authenticated) checkbox.checked = true;
+      return el("label", { className: "ai-checkbox ai-toggle" }, [
+        checkbox,
+        el("span", { text: "Only for authenticated" }),
+      ]);
     }
 
     function renderProtectToggle(mdl) {

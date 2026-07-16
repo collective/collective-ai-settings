@@ -40,6 +40,10 @@ MODEL_JSON_SCHEMA = {
                             "items": {"type": "string"},
                             "uniqueItems": True,
                         },
+                        # When true the model is only usable by a logged-in
+                        # user — anonymous callers are denied. No specific
+                        # permission is required, only authentication.
+                        "only_for_authenticated": {"type": "boolean"},
                         # When true the model is only usable if the current
                         # user has any of the listed Plone permission titles
                         # (e.g. "View", "Modify portal content") on the
@@ -172,10 +176,14 @@ class IAIService(Interface):
       - ``None`` is returned when nothing matches.
 
     Permission gate:
+      - If the resolved entry has ``only_for_authenticated=true``, the caller
+        must be logged in (anonymous callers are denied); no specific
+        permission is required.
       - If the resolved entry has ``protect_with_permission=true``, the
         current user must hold at least one of ``entry["permissions"]`` on
-        ``context`` (portal root if omitted). On denial the call returns
-        ``None`` and the denial is logged.
+        ``context`` (portal root if omitted).
+      - Both gates are independent and combine with AND semantics. On denial
+        the call returns ``None`` and the denial is logged.
     """
 
     def run(

@@ -1,22 +1,35 @@
 """Permission-gate helper for AI model entries.
 
-When a model entry has ``protect_with_permission=true`` the caller must
-hold at least one of ``entry["permissions"]`` on the call context. The
-stored permission names are Plone permission *titles* (e.g. ``View``,
-``Modify portal content``), which is what
-:func:`AccessControl.SecurityManagement.getSecurityManager.checkPermission`
-expects.
+An entry may declare two independent gates:
+
+- ``only_for_authenticated=true`` requires the caller to be logged in
+  (anonymous callers are denied); no specific permission is checked.
+- ``protect_with_permission=true`` requires the caller to hold at least one
+  of ``entry["permissions"]`` on the call context. The stored permission
+  names are Plone permission *titles* (e.g. ``View``, ``Modify portal
+  content``), which is what
+  :func:`AccessControl.SecurityManagement.getSecurityManager.checkPermission`
+  expects.
+
+When both are enabled they combine with AND semantics.
 """
 
 from AccessControl import getSecurityManager
 from collective.aisettings import logger
+from plone import api
 
 
 def entry_permits(entry: dict, context) -> bool:
     """Return ``True`` if the current user may call ``entry`` against
-    ``context``. Always ``True`` when ``protect_with_permission`` is not
-    enabled on the entry.
+    ``context``. Always ``True`` when no gate is enabled on the entry.
     """
+    if entry.get("only_for_authenticated") and api.user.is_anonymous():
+        logger.info(
+            "AI model entry %r requires authentication; denying anonymous "
+            "caller.",
+            entry.get("model") or entry.get("url"),
+        )
+        return False
     if not entry.get("protect_with_permission"):
         return True
     permissions = entry.get("permissions") or []

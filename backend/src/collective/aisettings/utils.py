@@ -108,6 +108,7 @@ def _flatten(connection: dict, model_def: dict) -> dict:
         "api_key": connection.get("api_key") or "",
         "model": model_def.get("model", ""),
         "capabilities": list(model_def.get("capabilities") or []),
+        "only_for_authenticated": bool(model_def.get("only_for_authenticated")),
         "protect_with_permission": bool(model_def.get("protect_with_permission")),
         "permissions": list(model_def.get("permissions") or []),
     }

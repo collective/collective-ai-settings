@@ -11,6 +11,7 @@ type Capability = { token: string; title: string };
 type ModelDef = {
   model: string;
   capabilities?: string[];
+  only_for_authenticated?: boolean;
   protect_with_permission?: boolean;
   permissions?: string[];
 };
@@ -38,6 +39,7 @@ const EMPTY_CONNECTION: Connection = {
 const EMPTY_MODEL: ModelDef = {
   model: '',
   capabilities: [],
+  only_for_authenticated: false,
   protect_with_permission: false,
   permissions: [],
 };
@@ -657,6 +659,19 @@ const ModelsWidget: React.FC<Props> = ({ id, value, onChange }) => {
                             </label>
                           ))}
                         </fieldset>
+
+                        <label className="ai-checkbox ai-toggle">
+                          <input
+                            type="checkbox"
+                            checked={!!mdl.only_for_authenticated}
+                            onChange={(e) =>
+                              updateModel(connIndex, modelIndex, {
+                                only_for_authenticated: e.target.checked,
+                              })
+                            }
+                          />
+                          <span>Only for authenticated</span>
+                        </label>
 
                         <label className="ai-checkbox ai-toggle">
                           <input

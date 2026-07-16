@@ -125,12 +125,14 @@ live behind that endpoint:
       {
         "model": "llama3.2",
         "capabilities": ["completion", "tools"],
+        "only_for_authenticated": false,
         "protect_with_permission": false,
         "permissions": []
       },
       {
         "model": "llava",
         "capabilities": ["vision"],
+        "only_for_authenticated": true,
         "protect_with_permission": true,
         "permissions": ["Modify portal content"]
       }
@@ -229,12 +231,19 @@ so the widget can auto-detect capabilities by querying the service:
 
 ### Permission gating
 
-Each pinned model can opt in to **Protect with permission**. When enabled,
-the call is only allowed if the current user holds **at least one** of the
-listed Plone permission *titles* (e.g. `View`, `Modify portal content`,
-`Manage portal`) on the call's context. The widget surfaces checkboxes for
-the three common permissions and a free-text + add-button for custom ones,
-with selected entries displayed as removable chips.
+Each pinned model can opt in to two independent gates:
+
+- **Only for authenticated** — when enabled, the call is denied for anonymous
+  callers; any logged-in user is allowed. No specific permission is required.
+- **Protect with permission** — when enabled, the call is only allowed if the
+  current user holds **at least one** of the listed Plone permission *titles*
+  (e.g. `View`, `Modify portal content`, `Manage portal`) on the call's
+  context. The widget surfaces checkboxes for the three common permissions and
+  a free-text + add-button for custom ones, with selected entries displayed as
+  removable chips.
+
+When both are enabled they combine with AND semantics: the caller must be
+authenticated **and** hold one of the listed permissions.
 
 Generic passthrough connections cannot be gated per-model (they have no
 per-model definitions).
