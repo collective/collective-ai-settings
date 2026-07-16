@@ -111,8 +111,6 @@ const ModelsWidget: React.FC<Props> = ({ id, value, onChange }) => {
   const [permDrafts, setPermDrafts] = useState<Record<string, string>>({});
   const draftKey = (c: number, m: number) => `${c}:${m}`;
 
-
-
   useEffect(() => {
     apiFetch<{ items: Array<{ token: string; title: string }> }>(
       '/@vocabularies/collective.aisettings.Capabilities',

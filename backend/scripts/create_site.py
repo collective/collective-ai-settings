@@ -67,6 +67,8 @@ if site_id not in app.objectIds():
     transaction.commit()
 
     if EXAMPLE_CONTENT:
-        portal_setup.runAllImportStepsFromProfile("profile-collective.aisettings:initial")
+        portal_setup.runAllImportStepsFromProfile(
+            "profile-collective.aisettings:initial"
+        )
         transaction.commit()
     app._p_jar.sync()
