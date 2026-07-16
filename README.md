@@ -148,6 +148,50 @@ A connection with an empty `models` list is a **generic passthrough**: it
 won't be picked by capability-based resolution, but it can serve any model
 name that an `@ai` caller asks for explicitly.
 
+### Environment-based configuration (connections file)
+
+For deployments you often want to inject the endpoint, API key and models at
+deploy time rather than clicking them into the ZODB — to keep secrets out of
+the database and make the configuration reproducible. Set the environment
+variable `COLLECTIVE_AISETTINGS_CONNECTIONS` to the **absolute path** of a
+JSON file holding the *same* array of connections the control panel edits:
+
+```jsonc
+[
+  {
+    "url": "https://api.openai.com",
+    "api_key_env": "OPENAI_API_KEY",   // read from the environment at load time
+    "models": [
+      { "model": "gpt-4o", "capabilities": ["completion", "vision", "tools"] },
+      { "model": "text-embedding-3-small", "capabilities": ["embedding"] }
+    ]
+  },
+  {
+    "url": "http://localhost:11434",     // no key needed
+    "models": []                          // generic passthrough
+  }
+]
+```
+
+Notes:
+
+- **Same schema** as the control panel, plus one extra optional field per
+  connection: **`api_key_env`** names an environment variable to read the key
+  from, so the secret need not live in the file. When set and the variable is
+  present it wins over any inline `api_key`; if the variable is unset it falls
+  back to the inline `api_key` (and logs a warning).
+- **File-first precedence.** File connections are merged *before* the
+  registry ones, so on any overlap (same capability, or an explicitly named
+  model) the file wins; registry connections still extend the set for
+  capabilities/model names the file does not cover.
+- **Live reload.** The file is re-read when its modification time changes —
+  no restart needed — and otherwise cached.
+- **Fail-safe.** A missing, unreadable, malformed or schema-invalid file is
+  logged as an error and ignored; the site keeps running on the
+  registry-configured connections.
+- File-provided connections are **not** shown in the control panel; the panel
+  only edits the registry-stored list.
+
 ### Resolution rules
 
 When a caller asks for an AI operation, the addon walks the connections in

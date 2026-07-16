@@ -31,6 +31,9 @@ dependencies = [
     "plone.api",
     "plone.restapi",
     "plone.volto",
+    # Used to validate the optional AI connections JSON file (see
+    # collective.aisettings.utils). Also a transitive dep of plone.schema.
+    "jsonschema",
     # AI runtime: pydantic-ai agents + the openai SDK. The [openai] extra is
     # also used directly for embeddings, which pydantic-ai does not cover.
     "pydantic-ai-slim[openai]>=2.0,<3",

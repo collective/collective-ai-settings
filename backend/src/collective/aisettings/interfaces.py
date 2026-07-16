@@ -24,6 +24,11 @@ MODEL_JSON_SCHEMA = {
         "properties": {
             "url": {"type": "string", "format": "uri"},
             "api_key": {"type": "string"},
+            # Only meaningful for connections loaded from the JSON file named
+            # by ``COLLECTIVE_AISETTINGS_CONNECTIONS``: names an environment
+            # variable to read the API key from at load time, so the secret
+            # need not live in the file. Takes precedence over ``api_key``.
+            "api_key_env": {"type": "string"},
             "models": {
                 "type": "array",
                 "items": {
