@@ -5,20 +5,12 @@
     font-style: italic;
   }
 
-  // Blanket wrapper so `disabled` cascades to every control when the
-  // connections are managed by an environment file.
-  .ai-models-fieldset {
-    min-width: 0;
-    margin: 0;
-    padding: 0;
-    border: 0;
-  }
-
+  // ---- Read-only section for env-file-managed connections ----
   .ai-models-locked-banner {
-    margin-bottom: 1em;
     padding: 0.6em 0.9em;
     border: 1px solid #cbe3c4;
     border-radius: 4px;
+    margin-bottom: 1em;
     background: #eef7ea;
     color: #2b5e1e;
 
@@ -29,6 +21,37 @@
     }
   }
 
+  // The whole file section is greyed out and non-interactive; the editable
+  // connections render below at full opacity.
+  .ai-file-connections {
+    margin-bottom: 1.5em;
+
+    .ai-connection.is-readonly,
+    .ai-model-card.is-readonly {
+      opacity: 0.75;
+    }
+
+    .ai-connection-header,
+    .ai-model-card-header {
+      cursor: default;
+    }
+  }
+
+  .ai-readonly-badge {
+    padding: 0.15em 0.6em;
+    border: 1px solid #cbe3c4;
+    border-radius: 12px;
+    background: #eef7ea;
+    color: #2b5e1e;
+    font-size: 0.8em;
+    white-space: nowrap;
+  }
+
+  .ai-readonly-label {
+    margin-bottom: 0.25em;
+    font-weight: 500;
+  }
+
   .ai-readonly-value {
     padding: 0.4em 0;
     color: #444;
@@ -36,16 +59,6 @@
 
     code {
       font-family: monospace;
-    }
-  }
-
-  // Greyed-out, non-interactive appearance for the locked fieldset.
-  .ai-models-fieldset:disabled {
-    opacity: 0.75;
-
-    .ai-connection-header,
-    .ai-model-card-header {
-      cursor: default;
     }
   }
 

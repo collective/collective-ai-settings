@@ -108,11 +108,12 @@
     var capabilities = [];
     var modelsByUrl = {};
 
-    // When an environment file manages the connections the widget is
-    // read-only: it renders those (secret-free) connections as confirmation
-    // that the file loaded, and no editing/reordering is possible.
-    var locked = false;
-    var fileEnvVar = "";
+    // Read-only connections managed by the environment file, rendered above
+    // the editable list. Stays hidden unless the file is active.
+    var fileConfig = null;
+    var fileSection = el("div", { className: "ai-file-connections" });
+    fileSection.hidden = true;
+    widget.insertBefore(fileSection, empty);
 
     // Drag state at two scopes — connection level and model level.
     var connDragIndex = null;
@@ -121,7 +122,6 @@
     var modelDrop = null;
 
     function commit() {
-      if (locked) return;
       input.value = JSON.stringify(connections);
     }
 
@@ -138,35 +138,13 @@
       addBtn.classList.add("ai-add-connection");
     }
 
-    function renderLockedBanner() {
-      var existing = widget.querySelector(".ai-models-locked-banner");
-      if (!locked) {
-        if (existing) existing.remove();
-        return;
-      }
-      if (existing) return;
-      var banner = el("p", { className: "ai-models-locked-banner" }, [
-        el("strong", { text: "Managed by environment configuration. " }),
-        "These connections are loaded from the ",
-        el("code", { text: fileEnvVar }),
-        " file and cannot be edited here. This confirms the file was found " +
-          "and loaded successfully.",
-      ]);
-      widget.insertBefore(banner, widget.firstChild);
-    }
-
     function render() {
-      renderLockedBanner();
-      if (addBtn) addBtn.hidden = locked;
       list.innerHTML = "";
       if (connections.length === 0) {
         list.hidden = true;
         empty.hidden = false;
-        empty.textContent = locked
-          ? "The environment file loaded successfully but declares no " +
-            "connections."
-          : "No AI connections configured yet. Click “+ Add connection” to " +
-            "start.";
+        empty.textContent =
+          "No AI connections configured yet. Click “+ Add connection” to start.";
         return;
       }
       empty.hidden = true;
@@ -175,17 +153,6 @@
       connections.forEach(function (conn, connIndex) {
         list.appendChild(renderConnection(conn, connIndex));
       });
-
-      if (locked) {
-        widget.classList.add("is-locked");
-        list
-          .querySelectorAll("input, select, textarea, button")
-          .forEach(function (node) {
-            node.disabled = true;
-          });
-      } else {
-        widget.classList.remove("is-locked");
-      }
     }
 
     // ---- Connection card ----
@@ -232,26 +199,24 @@
       // Connection drag handle / header.
       var header = el("div", {
         className: "ai-connection-header",
-        draggable: !locked,
+        draggable: true,
       });
-      header.draggable = !locked;
+      header.draggable = true;
 
-      if (!locked) {
-        header.addEventListener("dragstart", function (e) {
-          connDragIndex = connIndex;
-          e.dataTransfer.effectAllowed = "move";
-          e.dataTransfer.setData("text/plain", "conn:" + connIndex);
-          setTimeout(function () {
-            card.classList.add("is-dragging");
-          }, 0);
-        });
+      header.addEventListener("dragstart", function (e) {
+        connDragIndex = connIndex;
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", "conn:" + connIndex);
+        setTimeout(function () {
+          card.classList.add("is-dragging");
+        }, 0);
+      });
 
-        header.addEventListener("dragend", function () {
-          cleanupDragClasses();
-          connDragIndex = null;
-          connDropIndex = null;
-        });
-      }
+      header.addEventListener("dragend", function () {
+        cleanupDragClasses();
+        connDragIndex = null;
+        connDropIndex = null;
+      });
 
       header.appendChild(
         el("span", {
@@ -316,24 +281,6 @@
     }
 
     function renderApiKeyField(conn, connIndex, hasModels) {
-      if (locked) {
-        var display;
-        if (conn.api_key_env) {
-          display = el("span", { className: "ai-readonly-value" }, [
-            "From environment variable ",
-            el("code", { text: conn.api_key_env }),
-          ]);
-        } else {
-          display = el("span", {
-            className: "ai-readonly-value",
-            text: conn.api_key_set ? "•••••••• (set)" : "(none)",
-          });
-        }
-        return el("div", { className: "ai-field" }, [
-          el("label", { text: "API key" }),
-          display,
-        ]);
-      }
       var input = el("input", {
         type: "password",
         value: conn.api_key || "",
@@ -455,30 +402,28 @@
       // Model header (drag handle source)
       var header = el("div", {
         className: "ai-model-card-header",
-        draggable: !locked,
+        draggable: true,
       });
-      header.draggable = !locked;
+      header.draggable = true;
 
-      if (!locked) {
-        header.addEventListener("dragstart", function (e) {
-          e.stopPropagation();
-          modelDrag = { connIndex: connIndex, modelIndex: modelIndex };
-          e.dataTransfer.effectAllowed = "move";
-          e.dataTransfer.setData(
-            "text/plain",
-            "model:" + connIndex + ":" + modelIndex,
-          );
-          setTimeout(function () {
-            card.classList.add("is-dragging");
-          }, 0);
-        });
+      header.addEventListener("dragstart", function (e) {
+        e.stopPropagation();
+        modelDrag = { connIndex: connIndex, modelIndex: modelIndex };
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData(
+          "text/plain",
+          "model:" + connIndex + ":" + modelIndex,
+        );
+        setTimeout(function () {
+          card.classList.add("is-dragging");
+        }, 0);
+      });
 
-        header.addEventListener("dragend", function () {
-          cleanupDragClasses();
-          modelDrag = null;
-          modelDrop = null;
-        });
-      }
+      header.addEventListener("dragend", function () {
+        cleanupDragClasses();
+        modelDrag = null;
+        modelDrop = null;
+      });
 
       header.appendChild(
         el("span", {
@@ -524,15 +469,6 @@
     }
 
     function renderModelField(conn, mdl, connIndex, modelIndex, models, state) {
-      if (locked) {
-        return el("div", { className: "ai-field" }, [
-          el("label", { text: "Model" }),
-          el("span", {
-            className: "ai-readonly-value",
-            text: mdl.model || "(none)",
-          }),
-        ]);
-      }
       var loading = state && state.loading;
       var error = state && state.error;
       var label = el("label", {}, ["Model"]);
@@ -791,25 +727,160 @@
         });
     }
 
+    function capTitle(token) {
+      for (var i = 0; i < capabilities.length; i++) {
+        if (capabilities[i].token === token) return capabilities[i].title;
+      }
+      return token;
+    }
+
+    // ---- Read-only rendering of the env-file connections ----
+    function renderFileSection() {
+      fileSection.innerHTML = "";
+      if (!fileConfig || !fileConfig.active) {
+        fileSection.hidden = true;
+        return;
+      }
+      fileSection.hidden = false;
+      fileSection.appendChild(
+        el("p", { className: "ai-models-locked-banner" }, [
+          el("strong", { text: "Managed by environment configuration. " }),
+          "The following connections are loaded from the ",
+          el("code", { text: fileConfig.env_var || "" }),
+          " file and cannot be edited here. You can still add your own " +
+            "connections below.",
+        ]),
+      );
+      (fileConfig.connections || []).forEach(function (conn, i) {
+        fileSection.appendChild(renderFileConnection(conn, i));
+      });
+    }
+
+    function renderFileConnection(conn, i) {
+      var card = el("div", { className: "ai-connection is-readonly" });
+      card.appendChild(
+        el("div", { className: "ai-connection-header" }, [
+          el("span", {
+            className: "ai-connection-title",
+            text:
+              "Connection #" + (i + 1) + (conn.url ? " — " + conn.url : ""),
+          }),
+          el("span", {
+            className: "ai-readonly-badge",
+            text: "from environment",
+          }),
+        ]),
+      );
+
+      var body = el("div", { className: "ai-connection-body" });
+      body.appendChild(
+        el("div", { className: "ai-field" }, [
+          el("span", { className: "ai-readonly-label", text: "URL" }),
+          el("span", {
+            className: "ai-readonly-value",
+            text: conn.url || "(none)",
+          }),
+        ]),
+      );
+
+      var apiKeyValue;
+      if (conn.api_key_env) {
+        apiKeyValue = el("span", { className: "ai-readonly-value" }, [
+          "From environment variable ",
+          el("code", { text: conn.api_key_env }),
+        ]);
+      } else {
+        apiKeyValue = el("span", {
+          className: "ai-readonly-value",
+          text: conn.api_key_set ? "•••••••• (set)" : "(none)",
+        });
+      }
+      body.appendChild(
+        el("div", { className: "ai-field" }, [
+          el("span", { className: "ai-readonly-label", text: "API key" }),
+          apiKeyValue,
+        ]),
+      );
+
+      var modelsWrap = el("div", { className: "ai-connection-models" });
+      var models = conn.models || [];
+      if (models.length === 0) {
+        modelsWrap.appendChild(
+          el("p", {
+            className: "ai-hint ai-models-passthrough",
+            text: "No models — this connection is a generic passthrough.",
+          }),
+        );
+      } else {
+        models.forEach(function (mdl, mi) {
+          modelsWrap.appendChild(renderFileModel(mdl, mi));
+        });
+      }
+      body.appendChild(modelsWrap);
+      card.appendChild(body);
+      return card;
+    }
+
+    function renderFileModel(mdl, mi) {
+      var card = el("div", { className: "ai-model-card is-readonly" });
+      card.appendChild(
+        el("div", { className: "ai-model-card-header" }, [
+          el("span", {
+            className: "ai-model-card-title",
+            text: "Model #" + (mi + 1) + (mdl.model ? " — " + mdl.model : ""),
+          }),
+        ]),
+      );
+
+      var body = el("div", { className: "ai-model-card-body" });
+      var caps = mdl.capabilities || [];
+      body.appendChild(
+        el("div", { className: "ai-field" }, [
+          el("span", { className: "ai-readonly-label", text: "Capabilities" }),
+          el("span", {
+            className: "ai-readonly-value",
+            text: caps.length ? caps.map(capTitle).join(", ") : "(none)",
+          }),
+        ]),
+      );
+
+      if (mdl.only_for_authenticated || mdl.protect_with_permission) {
+        var parts = [];
+        if (mdl.only_for_authenticated) parts.push("Authenticated only");
+        if (mdl.protect_with_permission) {
+          parts.push(
+            "Permissions: " + ((mdl.permissions || []).join(", ") || "(none)"),
+          );
+        }
+        body.appendChild(
+          el("div", { className: "ai-field" }, [
+            el("span", { className: "ai-readonly-label", text: "Access" }),
+            el("span", {
+              className: "ai-readonly-value",
+              text: parts.join("; "),
+            }),
+          ]),
+        );
+      }
+      card.appendChild(body);
+      return card;
+    }
+
     addBtn.addEventListener("click", function () {
       connections.push({ url: "", api_key: "", models: [] });
       commit();
       render();
     });
 
-    // Initial load: check whether an environment file manages the
-    // connections (locks the widget), then the capabilities vocabulary, then
-    // model lists for every connection that already has a pinned model.
+    // Initial load: env-file connections (read-only section) and the
+    // capabilities vocabulary, then model lists for every editable
+    // connection that already has at least one pinned model.
     api("/@ai-file-connections")
       .then(function (data) {
-        if (data && data.active) {
-          locked = true;
-          fileEnvVar = data.env_var || "";
-          connections = data.connections || [];
-        }
+        fileConfig = data;
       })
       .catch(function () {
-        /* env file not active or unreachable → stay editable */
+        fileConfig = null;
       })
       .then(function () {
         return api("/@vocabularies/collective.aisettings.Capabilities");
@@ -823,13 +894,12 @@
         capabilities = [];
       })
       .then(function () {
-        if (!locked) {
-          connections.forEach(function (conn) {
-            if (conn.url && (conn.models || []).length > 0) {
-              loadModels(conn.url, conn.api_key);
-            }
-          });
-        }
+        connections.forEach(function (conn) {
+          if (conn.url && (conn.models || []).length > 0) {
+            loadModels(conn.url, conn.api_key);
+          }
+        });
+        renderFileSection();
         render();
       });
   }

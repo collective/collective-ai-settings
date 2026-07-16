@@ -8,7 +8,7 @@
   margin: 0.5em 0;
 }
 
-/* ---- Environment-file locked (read-only) state ---- */
+/* ---- Read-only section for env-file-managed connections ---- */
 .ai-models-widget .ai-models-locked-banner {
   margin-bottom: 1em;
   padding: 0.6em 0.9em;
@@ -24,29 +24,41 @@
   background: rgba(43, 94, 30, 0.1);
 }
 
+/* The file section is greyed and non-interactive; the editable list below
+   renders at full opacity. */
+.ai-models-widget .ai-file-connections {
+  margin-bottom: 1.5em;
+}
+
+.ai-models-widget .ai-file-connections .ai-connection.is-readonly,
+.ai-models-widget .ai-file-connections .ai-model-card.is-readonly {
+  opacity: 0.75;
+}
+
+.ai-models-widget .ai-file-connections .ai-connection-header,
+.ai-models-widget .ai-file-connections .ai-model-card-header {
+  cursor: default;
+}
+
+.ai-models-widget .ai-readonly-badge {
+  padding: 0.15em 0.6em;
+  border: 1px solid #cbe3c4;
+  border-radius: 12px;
+  background: #eef7ea;
+  color: #2b5e1e;
+  font-size: 0.8em;
+  white-space: nowrap;
+}
+
+.ai-models-widget .ai-readonly-label {
+  margin-bottom: 0.25em;
+  font-weight: 500;
+}
+
 .ai-models-widget .ai-readonly-value {
   padding: 0.4em 0;
   color: #444;
   font-family: monospace;
-}
-
-/* Hide every editing affordance and grey out the cards when locked. */
-.ai-models-widget.is-locked .ai-models-list {
-  opacity: 0.75;
-}
-
-.ai-models-widget.is-locked .ai-remove,
-.ai-models-widget.is-locked .ai-add,
-.ai-models-widget.is-locked .ai-add-model,
-.ai-models-widget.is-locked .ai-drag-handle,
-.ai-models-widget.is-locked .ai-perm-chip-remove,
-.ai-models-widget.is-locked .ai-perm-add {
-  display: none;
-}
-
-.ai-models-widget.is-locked .ai-connection-header,
-.ai-models-widget.is-locked .ai-model-card-header {
-  cursor: default;
 }
 
 .ai-models-widget .ai-model-row {

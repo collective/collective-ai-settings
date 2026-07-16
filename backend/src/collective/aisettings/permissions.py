@@ -25,8 +25,7 @@ def entry_permits(entry: dict, context) -> bool:
     """
     if entry.get("only_for_authenticated") and api.user.is_anonymous():
         logger.info(
-            "AI model entry %r requires authentication; denying anonymous "
-            "caller.",
+            "AI model entry %r requires authentication; denying anonymous caller.",
             entry.get("model") or entry.get("url"),
         )
         return False
