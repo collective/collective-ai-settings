@@ -191,8 +191,16 @@ Notes:
 - **Fail-safe.** A missing, unreadable, malformed or schema-invalid file is
   logged as an error and ignored; the site keeps running on the
   registry-configured connections.
-- File-provided connections are **not** shown in the control panel; the panel
-  only edits the registry-stored list.
+- **Control-panel lock & confirmation.** Whenever the environment variable is
+  set *and* the file loads and validates without errors, both the classic and
+  Volto control panels switch to a **read-only** view that renders the
+  file-provided connections greyed out (no editing, adding, removing or
+  reordering). This doubles as a confirmation that the file was found and
+  parsed correctly. API keys are never exposed to the browser: a connection
+  using `api_key_env` shows only the **variable name** (the value is never
+  read), and an inline `api_key` is shown as a masked "set" indicator. If the
+  variable is unset — or the file fails to load — the panel stays fully
+  editable against the registry-stored list.
 
 ### Resolution rules
 

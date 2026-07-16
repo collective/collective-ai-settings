@@ -5,6 +5,50 @@
     font-style: italic;
   }
 
+  // Blanket wrapper so `disabled` cascades to every control when the
+  // connections are managed by an environment file.
+  .ai-models-fieldset {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .ai-models-locked-banner {
+    margin-bottom: 1em;
+    padding: 0.6em 0.9em;
+    border: 1px solid #cbe3c4;
+    border-radius: 4px;
+    background: #eef7ea;
+    color: #2b5e1e;
+
+    code {
+      padding: 0.05em 0.35em;
+      border-radius: 3px;
+      background: rgba(43, 94, 30, 0.1);
+    }
+  }
+
+  .ai-readonly-value {
+    padding: 0.4em 0;
+    color: #444;
+    font-family: monospace;
+
+    code {
+      font-family: monospace;
+    }
+  }
+
+  // Greyed-out, non-interactive appearance for the locked fieldset.
+  .ai-models-fieldset:disabled {
+    opacity: 0.75;
+
+    .ai-connection-header,
+    .ai-model-card-header {
+      cursor: default;
+    }
+  }
+
   .ai-model-row {
     border: 1px solid #ddd;
     border-radius: 4px;

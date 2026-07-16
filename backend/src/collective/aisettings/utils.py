@@ -41,22 +41,34 @@ def _resolve_api_key(connection: dict) -> None:
         )
 
 
-def _load_connections_file(path: str) -> list[dict]:
-    """Read, validate and normalise the connections JSON file at ``path``.
+def _read_connections_file(path: str) -> list[dict] | None:
+    """Read and validate the connections JSON file at ``path``.
 
-    Returns ``[]`` (and logs) on any error so a broken file never takes the
-    site down — it just falls back to registry-only configuration.
+    Returns the raw parsed list (with any ``api_key``/``api_key_env`` still
+    intact) or ``None`` (and logs) on any read/validation error.
     """
     try:
         with open(path, encoding="utf-8") as handle:
             data = json.load(handle)
     except (OSError, ValueError) as exc:
         logger.error("Could not read AI connections file %r: %s", path, exc)
-        return []
+        return None
     try:
         _json_validate(data, MODEL_JSON_SCHEMA)
     except ValidationError as exc:
         logger.error("AI connections file %r is invalid: %s", path, exc.message)
+        return None
+    return data
+
+
+def _load_connections_file(path: str) -> list[dict]:
+    """Read, validate and normalise the connections JSON file at ``path``.
+
+    Returns ``[]`` (and logs) on any error so a broken file never takes the
+    site down — it just falls back to registry-only configuration.
+    """
+    data = _read_connections_file(path)
+    if data is None:
         return []
     for connection in data:
         _resolve_api_key(connection)
@@ -84,6 +96,53 @@ def _file_connections() -> list[dict]:
     connections = _load_connections_file(path)
     _file_cache = (cache_key, connections)
     return connections
+
+
+def _display_model(model_def: dict) -> dict:
+    """Secret-free, normalised copy of a model definition for the control
+    panel to render read-only."""
+    return {
+        "model": model_def.get("model", ""),
+        "capabilities": list(model_def.get("capabilities") or []),
+        "only_for_authenticated": bool(model_def.get("only_for_authenticated")),
+        "protect_with_permission": bool(model_def.get("protect_with_permission")),
+        "permissions": list(model_def.get("permissions") or []),
+    }
+
+
+def _display_connection(connection: dict) -> dict:
+    """Secret-free copy of a file connection for read-only display.
+
+    The API key is *never* exposed: an ``api_key_env`` reference is surfaced
+    as its variable *name* only (the value is never read), and an inline
+    ``api_key`` is reduced to a boolean ``api_key_set`` flag.
+    """
+    out: dict = {
+        "url": connection.get("url", ""),
+        "api_key_set": bool(connection.get("api_key")),
+        "models": [_display_model(m) for m in (connection.get("models") or [])],
+    }
+    env_name = connection.get("api_key_env")
+    if env_name:
+        out["api_key_env"] = env_name
+    return out
+
+
+def file_connections_display() -> list[dict] | None:
+    """Return the env-file connections sanitised for read-only display.
+
+    ``None`` when the file is not active — i.e. ``CONNECTIONS_ENV`` is unset,
+    or the file could not be read/validated. A non-``None`` result (even an
+    empty list) means the file was found and loaded without errors, so the
+    control panels lock themselves as confirmation.
+    """
+    path = os.environ.get(CONNECTIONS_ENV)
+    if not path:
+        return None
+    data = _read_connections_file(path)
+    if data is None:
+        return None
+    return [_display_connection(c) for c in data]
 
 
 def _all_connections() -> list[dict]:

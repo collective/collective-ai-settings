@@ -21,6 +21,14 @@
       />
 
   <plone:service
+      method="GET"
+      factory=".file_connections.AIFileConnections"
+      for="Products.CMFPlone.interfaces.IPloneSiteRoot"
+      permission="cmf.ManagePortal"
+      name="@ai-file-connections"
+      />
+
+  <plone:service
       method="POST"
       factory=".ai.AIServiceEndpoint"
       for="plone.dexterity.interfaces.IDexterityContent"

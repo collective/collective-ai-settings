@@ -1,0 +1,1 @@
+When ``COLLECTIVE_AISETTINGS_CONNECTIONS`` is set and the file loads without errors, the control panel becomes read-only and displays the file-managed connections greyed out as a load-confirmation. Adds a ``@ai-file-connections`` REST service that reports this state without ever exposing API keys (an ``api_key_env`` reference surfaces only its variable name).

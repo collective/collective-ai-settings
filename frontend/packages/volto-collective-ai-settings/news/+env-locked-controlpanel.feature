@@ -1,0 +1,1 @@
+Lock the control panel (read-only, greyed out) when AI connections are managed by the `COLLECTIVE_AISETTINGS_CONNECTIONS` environment file, as a confirmation that the file loaded. API keys are never shown: an `api_key_env` reference displays only the variable name.

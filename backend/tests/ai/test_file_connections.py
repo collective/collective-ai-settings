@@ -119,6 +119,83 @@ class TestApiKeyEnv:
         assert "api_key_env" not in conn
 
 
+class TestFileConnectionsDisplay:
+    def test_none_when_env_unset(self, monkeypatch):
+        monkeypatch.delenv(CONNECTIONS_ENV, raising=False)
+        assert utils.file_connections_display() is None
+
+    def test_none_when_file_invalid(self, monkeypatch, tmp_path):
+        path = tmp_path / "bad.json"
+        path.write_text("{not json", encoding="utf-8")
+        monkeypatch.setenv(CONNECTIONS_ENV, str(path))
+        assert utils.file_connections_display() is None
+
+    def test_empty_list_when_file_empty(self, monkeypatch, tmp_path):
+        path = _write(tmp_path, [])
+        monkeypatch.setenv(CONNECTIONS_ENV, path)
+        # A valid but empty file is still "loaded" — an empty list, not None.
+        assert utils.file_connections_display() == []
+
+    def test_inline_api_key_never_exposed(self, monkeypatch, tmp_path):
+        path = _write(
+            tmp_path,
+            [{"url": "http://svc", "api_key": "sk-secret", "models": []}],
+        )
+        monkeypatch.setenv(CONNECTIONS_ENV, path)
+        conn = utils.file_connections_display()[0]
+        assert "api_key" not in conn
+        assert conn["api_key_set"] is True
+        assert conn["url"] == "http://svc"
+
+    def test_api_key_env_shows_name_not_value(self, monkeypatch, tmp_path):
+        path = _write(
+            tmp_path,
+            [{"url": "http://svc", "api_key_env": "MY_AI_KEY", "models": []}],
+        )
+        monkeypatch.setenv(CONNECTIONS_ENV, path)
+        # The value must NOT be read — set it to prove it is ignored.
+        monkeypatch.setenv("MY_AI_KEY", "sk-should-not-leak")
+        conn = utils.file_connections_display()[0]
+        assert conn["api_key_env"] == "MY_AI_KEY"
+        assert "api_key" not in conn
+        assert "sk-should-not-leak" not in json.dumps(conn)
+        # No inline key was declared.
+        assert conn["api_key_set"] is False
+
+    def test_no_key_is_reported_unset(self, monkeypatch, tmp_path):
+        path = _write(tmp_path, [{"url": "http://svc", "models": []}])
+        monkeypatch.setenv(CONNECTIONS_ENV, path)
+        conn = utils.file_connections_display()[0]
+        assert conn["api_key_set"] is False
+        assert "api_key_env" not in conn
+
+    def test_models_normalised_with_gate_flags(self, monkeypatch, tmp_path):
+        path = _write(
+            tmp_path,
+            [
+                {
+                    "url": "http://svc",
+                    "models": [
+                        {
+                            "model": "m1",
+                            "capabilities": ["completion"],
+                            "only_for_authenticated": True,
+                        }
+                    ],
+                }
+            ],
+        )
+        monkeypatch.setenv(CONNECTIONS_ENV, path)
+        model = utils.file_connections_display()[0]["models"][0]
+        assert model == {
+            "model": "m1",
+            "capabilities": ["completion"],
+            "only_for_authenticated": True,
+            "protect_with_permission": False,
+            "permissions": [],
+        }
+
+
 class TestMergePrecedence:
     def test_file_connections_come_first(self, portal, monkeypatch, tmp_path):
         with api.env.adopt_roles(["Manager"]):

@@ -20,6 +20,16 @@ type Connection = {
   url: string;
   api_key?: string;
   models?: ModelDef[];
+  // Only populated for read-only, env-file-managed connections. The real
+  // API key is never sent to the browser.
+  api_key_env?: string;
+  api_key_set?: boolean;
+};
+
+type FileConfig = {
+  active: boolean;
+  env_var: string;
+  connections: Connection[];
 };
 
 type Props = {
@@ -91,11 +101,23 @@ function reorder<T>(list: T[], from: number, to: number): T[] {
 }
 
 const ModelsWidget: React.FC<Props> = ({ id, value, onChange }) => {
-  const connections = useMemo(() => parseValue(value), [value]);
+  const [fileConfig, setFileConfig] = useState<FileConfig | null>(null);
+  const locked = !!fileConfig?.active;
+
+  // When an env file manages the connections the widget is read-only and
+  // renders those (secret-free) connections instead of the editable value.
+  const editableConnections = useMemo(() => parseValue(value), [value]);
+  const connections = locked ? fileConfig!.connections : editableConnections;
   const connectionsRef = useRef<Connection[]>(connections);
   useEffect(() => {
     connectionsRef.current = connections;
   }, [connections]);
+
+  useEffect(() => {
+    apiFetch<FileConfig>('/@ai-file-connections')
+      .then((data) => setFileConfig(data))
+      .catch(() => setFileConfig(null));
+  }, []);
 
   const [capabilities, setCapabilities] = useState<Capability[]>([]);
   const [modelsByUrl, setModelsByUrl] = useState<
@@ -156,8 +178,10 @@ const ModelsWidget: React.FC<Props> = ({ id, value, onChange }) => {
   }, []);
 
   // Only prefetch model lists for connections that have at least one
-  // pinned model (they're the only ones that show a dropdown).
+  // pinned model (they're the only ones that show a dropdown). Skipped when
+  // locked: read-only connections just show the pinned model name as text.
   useEffect(() => {
+    if (locked) return;
     connections.forEach((conn) => {
       if (
         conn.url &&
@@ -167,7 +191,7 @@ const ModelsWidget: React.FC<Props> = ({ id, value, onChange }) => {
         loadModels(conn.url, conn.api_key);
       }
     });
-  }, [connections, modelsByUrl, loadModels]);
+  }, [locked, connections, modelsByUrl, loadModels]);
 
   // ---- Connection mutators ----
   const updateConnection = (connIndex: number, patch: Partial<Connection>) => {
@@ -426,366 +450,418 @@ const ModelsWidget: React.FC<Props> = ({ id, value, onChange }) => {
   };
 
   return (
-    <div className="ai-models-widget">
-      {connections.length === 0 && (
-        <p className="ai-models-empty">
-          No AI connections configured yet. Click <em>Add connection</em> below
-          to start.
+    <div className={`ai-models-widget${locked ? ' is-locked' : ''}`}>
+      {locked && (
+        <p className="ai-models-locked-banner">
+          <strong>Managed by environment configuration.</strong> These
+          connections are loaded from the <code>{fileConfig!.env_var}</code>{' '}
+          file and cannot be edited here. This confirms the file was found and
+          loaded successfully.
         </p>
       )}
 
-      {connections.map((conn, connIndex) => {
-        const state = conn.url ? modelsByUrl[conn.url] : undefined;
-        const availableModels = state?.items || [];
-        const isConnDragging = connDragIndex === connIndex;
-        const isConnDropTarget =
-          connDropIndex === connIndex && connDragIndex !== connIndex;
-        const connModels = conn.models || [];
+      <fieldset className="ai-models-fieldset" disabled={locked}>
+        {connections.length === 0 && (
+          <p className="ai-models-empty">
+            {locked
+              ? 'The environment file loaded successfully but declares no connections.'
+              : 'No AI connections configured yet. Click Add connection below to start.'}
+          </p>
+        )}
 
-        return (
-          <div
-            key={connIndex}
-            className={[
-              'ai-connection',
-              isConnDragging ? 'is-dragging' : '',
-              isConnDropTarget ? 'is-drop-target' : '',
-            ]
-              .filter(Boolean)
-              .join(' ')}
-            onDragOver={onConnDragOver(connIndex)}
-            onDrop={onConnDrop(connIndex)}
-            onDragEnd={onConnDragEnd}
-          >
+        {connections.map((conn, connIndex) => {
+          const state = conn.url ? modelsByUrl[conn.url] : undefined;
+          const availableModels = state?.items || [];
+          const isConnDragging = connDragIndex === connIndex;
+          const isConnDropTarget =
+            connDropIndex === connIndex && connDragIndex !== connIndex;
+          const connModels = conn.models || [];
+
+          return (
             <div
-              className="ai-connection-header"
-              draggable
-              onDragStart={onConnDragStart(connIndex)}
+              key={connIndex}
+              className={[
+                'ai-connection',
+                isConnDragging ? 'is-dragging' : '',
+                isConnDropTarget ? 'is-drop-target' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              onDragOver={onConnDragOver(connIndex)}
+              onDrop={onConnDrop(connIndex)}
+              onDragEnd={onConnDragEnd}
             >
-              <span
-                className="ai-drag-handle"
-                aria-label="Drag to reorder connection"
-                title="Drag to reorder connection"
+              <div
+                className="ai-connection-header"
+                draggable={!locked}
+                onDragStart={locked ? undefined : onConnDragStart(connIndex)}
               >
-                ⋮⋮
-              </span>
-              <span className="ai-connection-title">
-                Connection #{connIndex + 1}
-                {conn.url ? ` — ${conn.url}` : ''}
-              </span>
-              <button
-                type="button"
-                className="ai-remove"
-                onClick={() => removeConnection(connIndex)}
-              >
-                Remove
-              </button>
-            </div>
-
-            <div className="ai-connection-body">
-              <div className="ai-field">
-                <label htmlFor={`${id}-${connIndex}-url`}>URL</label>
-                <input
-                  id={`${id}-${connIndex}-url`}
-                  type="url"
-                  placeholder="http://localhost:11434"
-                  value={conn.url || ''}
-                  onChange={(e) =>
-                    updateConnection(connIndex, { url: e.target.value })
-                  }
-                  onBlur={(e) => {
-                    if (e.target.value && connModels.length > 0) {
-                      loadModels(e.target.value, conn.api_key);
-                    }
-                  }}
-                  required
-                />
-              </div>
-
-              <div className="ai-field">
-                <label htmlFor={`${id}-${connIndex}-api-key`}>API key</label>
-                <input
-                  id={`${id}-${connIndex}-api-key`}
-                  type="password"
-                  placeholder="(optional)"
-                  value={conn.api_key || ''}
-                  onChange={(e) =>
-                    updateConnection(connIndex, { api_key: e.target.value })
-                  }
-                  onBlur={(e) => {
-                    if (conn.url && connModels.length > 0) {
-                      loadModels(conn.url, e.target.value || undefined);
-                    }
-                  }}
-                />
-              </div>
-
-              <div className="ai-connection-models">
-                {connModels.length === 0 && (
-                  <p className="ai-hint ai-models-passthrough">
-                    No models — this connection acts as a generic passthrough
-                    (usable only when an @ai caller names a model explicitly).
-                  </p>
+                {!locked && (
+                  <span
+                    className="ai-drag-handle"
+                    aria-label="Drag to reorder connection"
+                    title="Drag to reorder connection"
+                  >
+                    ⋮⋮
+                  </span>
                 )}
+                <span className="ai-connection-title">
+                  Connection #{connIndex + 1}
+                  {conn.url ? ` — ${conn.url}` : ''}
+                </span>
+                {!locked && (
+                  <button
+                    type="button"
+                    className="ai-remove"
+                    onClick={() => removeConnection(connIndex)}
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
 
-                {connModels.map((mdl, modelIndex) => {
-                  const isModelDragging =
-                    modelDrag?.connIndex === connIndex &&
-                    modelDrag?.modelIndex === modelIndex;
-                  const isModelDropTarget =
-                    modelDrop?.connIndex === connIndex &&
-                    modelDrop?.modelIndex === modelIndex &&
-                    !isModelDragging;
-                  const modelMissing =
-                    mdl.model &&
-                    !availableModels.includes(mdl.model) &&
-                    !state?.loading;
-                  const selectedPerms = mdl.permissions || [];
-                  const dKey = draftKey(connIndex, modelIndex);
-                  const draftPerm = permDrafts[dKey] || '';
+              <div className="ai-connection-body">
+                <div className="ai-field">
+                  <label htmlFor={`${id}-${connIndex}-url`}>URL</label>
+                  <input
+                    id={`${id}-${connIndex}-url`}
+                    type="url"
+                    placeholder="http://localhost:11434"
+                    value={conn.url || ''}
+                    onChange={(e) =>
+                      updateConnection(connIndex, { url: e.target.value })
+                    }
+                    onBlur={(e) => {
+                      if (e.target.value && connModels.length > 0) {
+                        loadModels(e.target.value, conn.api_key);
+                      }
+                    }}
+                    required
+                  />
+                </div>
 
-                  return (
-                    <div
-                      key={modelIndex}
-                      className={[
-                        'ai-model-card',
-                        isModelDragging ? 'is-dragging' : '',
-                        isModelDropTarget ? 'is-drop-target' : '',
-                      ]
-                        .filter(Boolean)
-                        .join(' ')}
-                      onDragOver={onModelDragOver(connIndex, modelIndex)}
-                      onDrop={onModelDrop(connIndex, modelIndex)}
-                      onDragEnd={onModelDragEnd}
-                    >
+                <div className="ai-field">
+                  <label htmlFor={`${id}-${connIndex}-api-key`}>API key</label>
+                  {locked ? (
+                    <span className="ai-readonly-value">
+                      {conn.api_key_env ? (
+                        <>
+                          From environment variable{' '}
+                          <code>{conn.api_key_env}</code>
+                        </>
+                      ) : conn.api_key_set ? (
+                        '•••••••• (set)'
+                      ) : (
+                        '(none)'
+                      )}
+                    </span>
+                  ) : (
+                    <input
+                      id={`${id}-${connIndex}-api-key`}
+                      type="password"
+                      placeholder="(optional)"
+                      value={conn.api_key || ''}
+                      onChange={(e) =>
+                        updateConnection(connIndex, { api_key: e.target.value })
+                      }
+                      onBlur={(e) => {
+                        if (conn.url && connModels.length > 0) {
+                          loadModels(conn.url, e.target.value || undefined);
+                        }
+                      }}
+                    />
+                  )}
+                </div>
+
+                <div className="ai-connection-models">
+                  {connModels.length === 0 && (
+                    <p className="ai-hint ai-models-passthrough">
+                      No models — this connection acts as a generic passthrough
+                      (usable only when an @ai caller names a model explicitly).
+                    </p>
+                  )}
+
+                  {connModels.map((mdl, modelIndex) => {
+                    const isModelDragging =
+                      modelDrag?.connIndex === connIndex &&
+                      modelDrag?.modelIndex === modelIndex;
+                    const isModelDropTarget =
+                      modelDrop?.connIndex === connIndex &&
+                      modelDrop?.modelIndex === modelIndex &&
+                      !isModelDragging;
+                    const modelMissing =
+                      mdl.model &&
+                      !availableModels.includes(mdl.model) &&
+                      !state?.loading;
+                    const selectedPerms = mdl.permissions || [];
+                    const dKey = draftKey(connIndex, modelIndex);
+                    const draftPerm = permDrafts[dKey] || '';
+
+                    return (
                       <div
-                        className="ai-model-card-header"
-                        draggable
-                        onDragStart={onModelDragStart(connIndex, modelIndex)}
+                        key={modelIndex}
+                        className={[
+                          'ai-model-card',
+                          isModelDragging ? 'is-dragging' : '',
+                          isModelDropTarget ? 'is-drop-target' : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
+                        onDragOver={onModelDragOver(connIndex, modelIndex)}
+                        onDrop={onModelDrop(connIndex, modelIndex)}
+                        onDragEnd={onModelDragEnd}
                       >
-                        <span
-                          className="ai-drag-handle"
-                          aria-label="Drag to reorder model"
-                          title="Drag to reorder model"
+                        <div
+                          className="ai-model-card-header"
+                          draggable={!locked}
+                          onDragStart={
+                            locked
+                              ? undefined
+                              : onModelDragStart(connIndex, modelIndex)
+                          }
                         >
-                          ⋮⋮
-                        </span>
-                        <span className="ai-model-card-title">
-                          Model #{modelIndex + 1}
-                          {mdl.model ? ` — ${mdl.model}` : ''}
-                        </span>
-                        <button
-                          type="button"
-                          className="ai-remove"
-                          onClick={() => removeModel(connIndex, modelIndex)}
-                        >
-                          Remove
-                        </button>
-                      </div>
-
-                      <div className="ai-model-card-body">
-                        <div className="ai-field">
-                          <label
-                            htmlFor={`${id}-${connIndex}-${modelIndex}-model`}
-                          >
-                            Model{' '}
-                            {state?.loading && (
-                              <span className="ai-hint">(loading…)</span>
-                            )}
-                            {state?.error && (
-                              <span className="ai-hint ai-error">
-                                (could not reach service)
-                              </span>
-                            )}
-                          </label>
-                          <select
-                            id={`${id}-${connIndex}-${modelIndex}-model`}
-                            value={mdl.model || ''}
-                            onChange={(e) =>
-                              handleModelChange(
-                                connIndex,
-                                modelIndex,
-                                e.target.value,
-                              )
-                            }
-                            disabled={!conn.url || state?.loading}
-                            required
-                          >
-                            <option value="" disabled>
-                              {!conn.url
-                                ? 'Enter a URL first'
-                                : state?.loading
-                                  ? 'Loading…'
-                                  : availableModels.length
-                                    ? 'Select a model'
-                                    : 'No models available'}
-                            </option>
-                            {availableModels.map((m) => (
-                              <option key={m} value={m}>
-                                {m}
-                              </option>
-                            ))}
-                            {modelMissing && (
-                              <option value={mdl.model}>
-                                {mdl.model} (not currently available)
-                              </option>
-                            )}
-                          </select>
-                        </div>
-
-                        <fieldset className="ai-field ai-capabilities">
-                          <legend>Capabilities</legend>
-                          {capabilities.length === 0 && (
-                            <span className="ai-hint">
-                              Loading capabilities…
+                          {!locked && (
+                            <span
+                              className="ai-drag-handle"
+                              aria-label="Drag to reorder model"
+                              title="Drag to reorder model"
+                            >
+                              ⋮⋮
                             </span>
                           )}
-                          {capabilities.map((cap) => (
-                            <label key={cap.token} className="ai-checkbox">
-                              <input
-                                type="checkbox"
-                                checked={(mdl.capabilities || []).includes(
-                                  cap.token,
-                                )}
+                          <span className="ai-model-card-title">
+                            Model #{modelIndex + 1}
+                            {mdl.model ? ` — ${mdl.model}` : ''}
+                          </span>
+                          {!locked && (
+                            <button
+                              type="button"
+                              className="ai-remove"
+                              onClick={() => removeModel(connIndex, modelIndex)}
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="ai-model-card-body">
+                          <div className="ai-field">
+                            <label
+                              htmlFor={`${id}-${connIndex}-${modelIndex}-model`}
+                            >
+                              Model{' '}
+                              {!locked && state?.loading && (
+                                <span className="ai-hint">(loading…)</span>
+                              )}
+                              {!locked && state?.error && (
+                                <span className="ai-hint ai-error">
+                                  (could not reach service)
+                                </span>
+                              )}
+                            </label>
+                            {locked ? (
+                              <span className="ai-readonly-value">
+                                {mdl.model || '(none)'}
+                              </span>
+                            ) : (
+                              <select
+                                id={`${id}-${connIndex}-${modelIndex}-model`}
+                                value={mdl.model || ''}
                                 onChange={(e) =>
-                                  toggleCapability(
+                                  handleModelChange(
                                     connIndex,
                                     modelIndex,
-                                    cap.token,
-                                    e.target.checked,
+                                    e.target.value,
                                   )
                                 }
-                              />
-                              <span>{cap.title}</span>
-                            </label>
-                          ))}
-                        </fieldset>
-
-                        <label className="ai-checkbox ai-toggle">
-                          <input
-                            type="checkbox"
-                            checked={!!mdl.only_for_authenticated}
-                            onChange={(e) =>
-                              updateModel(connIndex, modelIndex, {
-                                only_for_authenticated: e.target.checked,
-                              })
-                            }
-                          />
-                          <span>Only for authenticated</span>
-                        </label>
-
-                        <label className="ai-checkbox ai-toggle">
-                          <input
-                            type="checkbox"
-                            checked={!!mdl.protect_with_permission}
-                            onChange={(e) =>
-                              updateModel(connIndex, modelIndex, {
-                                protect_with_permission: e.target.checked,
-                              })
-                            }
-                          />
-                          <span>Protect with permission</span>
-                        </label>
-
-                        {mdl.protect_with_permission && (
-                          <fieldset className="ai-field ai-permissions">
-                            <legend>
-                              Allowed permissions (any one grants access)
-                            </legend>
-
-                            {selectedPerms.length > 0 && (
-                              <div className="ai-perm-chips">
-                                {selectedPerms.map((p) => (
-                                  <span key={p} className="ai-perm-chip">
-                                    {p}
-                                    <button
-                                      type="button"
-                                      className="ai-perm-chip-remove"
-                                      aria-label={`Remove ${p}`}
-                                      onClick={() =>
-                                        removePermission(
-                                          connIndex,
-                                          modelIndex,
-                                          p,
-                                        )
-                                      }
-                                    >
-                                      ×
-                                    </button>
-                                  </span>
+                                disabled={!conn.url || state?.loading}
+                                required
+                              >
+                                <option value="" disabled>
+                                  {!conn.url
+                                    ? 'Enter a URL first'
+                                    : state?.loading
+                                      ? 'Loading…'
+                                      : availableModels.length
+                                        ? 'Select a model'
+                                        : 'No models available'}
+                                </option>
+                                {availableModels.map((m) => (
+                                  <option key={m} value={m}>
+                                    {m}
+                                  </option>
                                 ))}
-                              </div>
+                                {modelMissing && (
+                                  <option value={mdl.model}>
+                                    {mdl.model} (not currently available)
+                                  </option>
+                                )}
+                              </select>
                             )}
+                          </div>
 
-                            {COMMON_PERMISSIONS.map((name) => (
-                              <label key={name} className="ai-checkbox">
+                          <fieldset className="ai-field ai-capabilities">
+                            <legend>Capabilities</legend>
+                            {capabilities.length === 0 && (
+                              <span className="ai-hint">
+                                Loading capabilities…
+                              </span>
+                            )}
+                            {capabilities.map((cap) => (
+                              <label key={cap.token} className="ai-checkbox">
                                 <input
                                   type="checkbox"
-                                  checked={selectedPerms.includes(name)}
+                                  checked={(mdl.capabilities || []).includes(
+                                    cap.token,
+                                  )}
                                   onChange={(e) =>
-                                    togglePermission(
+                                    toggleCapability(
                                       connIndex,
                                       modelIndex,
-                                      name,
+                                      cap.token,
                                       e.target.checked,
                                     )
                                   }
                                 />
-                                <span>{name}</span>
+                                <span>{cap.title}</span>
                               </label>
                             ))}
-
-                            <div className="ai-perm-add">
-                              <input
-                                type="text"
-                                placeholder="Custom permission (e.g. Manage portal)"
-                                value={draftPerm}
-                                onChange={(e) =>
-                                  setPermDrafts((p) => ({
-                                    ...p,
-                                    [dKey]: e.target.value,
-                                  }))
-                                }
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                    addCustomPermission(connIndex, modelIndex);
-                                  }
-                                }}
-                              />
-                              <button
-                                type="button"
-                                className="ai-perm-add-btn"
-                                onClick={() =>
-                                  addCustomPermission(connIndex, modelIndex)
-                                }
-                                disabled={!draftPerm.trim()}
-                              >
-                                +
-                              </button>
-                            </div>
                           </fieldset>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
 
-                <button
-                  type="button"
-                  className="ai-add ai-add-model"
-                  onClick={() => addModel(connIndex)}
-                >
-                  + Add model
-                </button>
+                          <label className="ai-checkbox ai-toggle">
+                            <input
+                              type="checkbox"
+                              checked={!!mdl.only_for_authenticated}
+                              onChange={(e) =>
+                                updateModel(connIndex, modelIndex, {
+                                  only_for_authenticated: e.target.checked,
+                                })
+                              }
+                            />
+                            <span>Only for authenticated</span>
+                          </label>
+
+                          <label className="ai-checkbox ai-toggle">
+                            <input
+                              type="checkbox"
+                              checked={!!mdl.protect_with_permission}
+                              onChange={(e) =>
+                                updateModel(connIndex, modelIndex, {
+                                  protect_with_permission: e.target.checked,
+                                })
+                              }
+                            />
+                            <span>Protect with permission</span>
+                          </label>
+
+                          {mdl.protect_with_permission && (
+                            <fieldset className="ai-field ai-permissions">
+                              <legend>
+                                Allowed permissions (any one grants access)
+                              </legend>
+
+                              {selectedPerms.length > 0 && (
+                                <div className="ai-perm-chips">
+                                  {selectedPerms.map((p) => (
+                                    <span key={p} className="ai-perm-chip">
+                                      {p}
+                                      <button
+                                        type="button"
+                                        className="ai-perm-chip-remove"
+                                        aria-label={`Remove ${p}`}
+                                        onClick={() =>
+                                          removePermission(
+                                            connIndex,
+                                            modelIndex,
+                                            p,
+                                          )
+                                        }
+                                      >
+                                        ×
+                                      </button>
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+
+                              {COMMON_PERMISSIONS.map((name) => (
+                                <label key={name} className="ai-checkbox">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedPerms.includes(name)}
+                                    onChange={(e) =>
+                                      togglePermission(
+                                        connIndex,
+                                        modelIndex,
+                                        name,
+                                        e.target.checked,
+                                      )
+                                    }
+                                  />
+                                  <span>{name}</span>
+                                </label>
+                              ))}
+
+                              <div className="ai-perm-add">
+                                <input
+                                  type="text"
+                                  placeholder="Custom permission (e.g. Manage portal)"
+                                  value={draftPerm}
+                                  onChange={(e) =>
+                                    setPermDrafts((p) => ({
+                                      ...p,
+                                      [dKey]: e.target.value,
+                                    }))
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      addCustomPermission(
+                                        connIndex,
+                                        modelIndex,
+                                      );
+                                    }
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  className="ai-perm-add-btn"
+                                  onClick={() =>
+                                    addCustomPermission(connIndex, modelIndex)
+                                  }
+                                  disabled={!draftPerm.trim()}
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </fieldset>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {!locked && (
+                    <button
+                      type="button"
+                      className="ai-add ai-add-model"
+                      onClick={() => addModel(connIndex)}
+                    >
+                      + Add model
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
 
-      <button type="button" className="ai-add" onClick={addConnection}>
-        + Add connection
-      </button>
+        {!locked && (
+          <button type="button" className="ai-add" onClick={addConnection}>
+            + Add connection
+          </button>
+        )}
+      </fieldset>
     </div>
   );
 };
