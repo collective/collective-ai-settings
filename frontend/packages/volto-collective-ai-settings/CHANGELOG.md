@@ -8,6 +8,8 @@
 
 <!-- towncrier release notes start -->
 
+## 1.4.0 (2026-11-02)
+
 ## 1.3.0 (2026-07-16)
 
 ### Feature
