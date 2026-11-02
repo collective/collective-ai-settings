@@ -346,7 +346,50 @@ The endpoint is registered for `IDexterityContent` (so the URL can
 be rooted at any content item including the site root) with the
 `zope2.View` permission. The matched model's permission gate is
 evaluated against `self.context`; on denial the endpoint returns
-HTTP 403.
+HTTP 403. `@ai-task` responses carry `Cache-Control: no-store`.
+
+#### Sharing tasks between processes (optional)
+
+By default a task lives in the memory of the process that created it, so a
+poll that a load balancer sends to another process gets `404 task not
+found`, and a restart loses every running task. To run several instances,
+point them all at a memcached instance:
+
+```sh
+pip install collective.aisettings[memcached]
+export COLLECTIVE_AISETTINGS_TASK_STORE=memcached://memcached:11211
+```
+
+| Variable | Default | |
+|---|---|---|
+| `COLLECTIVE_AISETTINGS_TASK_STORE` | unset (off) | `memcached://host:port`, or `memcached://h1:11211,h2:11211`. Unset, nothing below applies and behaviour is exactly the in-memory one. An invalid value logs an error and leaves it off. |
+| `COLLECTIVE_AISETTINGS_TASK_STORE_PREFIX` | `collective.aisettings.task:` | Key prefix. **Make it unique per site** when several sites share one memcached, or a task id leaked from one site is readable on another. |
+| `COLLECTIVE_AISETTINGS_TASK_MAX_RUNNING` | `900` | Seconds after which a task still running is reported as failed. |
+| `COLLECTIVE_AISETTINGS_TASK_TTL` | `1800` | Seconds a finished task stays readable. |
+| `COLLECTIVE_AISETTINGS_TASK_DRAIN` | `0` | Seconds `begin_shutdown()` waits for running tasks. |
+
+The store holds **state, not cache**. Give it a memcached instance of its
+own: one shared with an evicting cache can drop a record while a client is
+still polling it.
+
+With the shared store on:
+
+- **Lost tasks.** A task running past `MAX_RUNNING` (its worker hung, or its
+  process died) is returned as `error`, so clients stop polling. It is
+  logged (`ERROR AI task lost: …`) and fires
+  `collective.aisettings.interfaces.ITaskLostEvent`; subscribe to it to
+  alert. A task finishing after that logs `AI task finished after being
+  reported lost` (the limit is too low) and fires the event again with
+  `late=True`. Tasks taking over half the limit log `WARNING AI task slow`.
+- **Owners.** A task started by a logged-in user is only returned to that
+  user.
+- **Shutdown.** The worker thread dies with its process. Call
+  `collective.aisettings.services.tasks.begin_shutdown()` from your
+  process's shutdown hook (the package installs no signal handler): new
+  tasks are refused (`@ai` answers `503` + `Retry-After`), running ones
+  get `DRAIN` seconds to finish, and the rest are returned as
+  `{"status": "error", "retryable": true}` so the client can start them
+  again elsewhere.
 
 #### Body shapes per capability
 

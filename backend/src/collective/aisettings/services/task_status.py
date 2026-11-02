@@ -1,4 +1,5 @@
 from collective.aisettings.services.tasks import get_task
+from plone import api
 from plone.restapi.services import Service
 from zope.interface import implementer
 from zope.publisher.interfaces import IPublishTraverse
@@ -11,7 +12,10 @@ class AITaskStatus(Service):
     Returns:
         ``{"task_id", "status": "running"}`` while the worker is busy;
         ``{"task_id", "status": "done", "result": ...}`` on success;
-        ``{"task_id", "status": "error", "error": "..."}`` on failure.
+        ``{"task_id", "status": "error", "error": "..."}`` on failure
+        (plus ``"retryable": true`` when a shutdown interrupted it).
+
+    The answer changes over time for the same URL, so it is never cacheable.
     """
 
     def __init__(self, context, request):
@@ -23,12 +27,13 @@ class AITaskStatus(Service):
         return self
 
     def reply(self):
+        self.request.response.setHeader("Cache-Control", "no-store")
         if not self.params:
             self.request.response.setStatus(400)
             return {"error": "task_id required"}
 
         task_id = self.params[0]
-        task = get_task(task_id)
+        task = get_task(task_id, owner=api.user.get_current().getId())
         if task is None:
             self.request.response.setStatus(404)
             return {"error": "task not found"}

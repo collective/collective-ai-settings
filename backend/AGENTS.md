@@ -34,7 +34,7 @@ backend/src/collective/aisettings/
 ├── services/
 │   ├── ai.py                  ← @ai async endpoint (capability dispatch)
 │   ├── task_status.py         ← @ai-task/<id> polling endpoint
-│   ├── tasks.py               ← in-memory task registry (create/complete/fail)
+│   ├── tasks.py               ← task registry: in-memory, or shared via memcached (opt-in)
 │   ├── list_models.py         ← @ai-list-models REST helper
 │   ├── model_capabilities.py  ← @ai-model-capabilities REST helper
 │   └── configure.zcml         ← <plone:service> registrations
@@ -232,11 +232,15 @@ existing pytest pattern.
   [`interfaces.py`](src/collective/aisettings/interfaces.py), update
   **both** widgets (the classic JS and the Volto TSX) in the same
   change. See `../frontend/AGENTS.md` for the frontend side.
-- The `@ai-task` polling endpoint reads from an in-memory task
-  registry ([`services/tasks.py`](src/collective/aisettings/services/tasks.py));
-  tasks don't survive a restart and aren't cross-process. If you
-  need persistence/horizontal scaling, document the trade-off in the
-  PR — don't silently switch backing stores.
+- The `@ai-task` polling endpoint reads from the task registry
+  ([`services/tasks.py`](src/collective/aisettings/services/tasks.py)).
+  By default it is in-memory: tasks don't survive a restart and aren't
+  cross-process. `COLLECTIVE_AISETTINGS_TASK_STORE=memcached://…` opts in
+  to `SharedTaskStore` (see the README). Everything beyond plain state
+  sharing (lost-task detection, owner checks, `begin_shutdown`) hangs off
+  that switch, so keep the unset path exactly the in-memory code. Keep the
+  four module functions' signatures stable: collective.aitools imports
+  them.
 - Don't import from Volto / TypeScript code, and don't write JSON
   serializers that assume Volto-specific URL shapes. The backend is
   classic-Plone-first; Volto is one of two clients of the same REST

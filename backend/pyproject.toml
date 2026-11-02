@@ -40,10 +40,15 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Shared async task store (COLLECTIVE_AISETTINGS_TASK_STORE=memcached://...).
+memcached = [
+    "pymemcache",
+]
 test = [
     "horse-with-no-namespace",
     "plone.app.testing",
     "plone.restapi[test]",
+    "pymemcache",
     "pytest",
     "pytest-cov",
     "pytest-plone>=1.0.0a2",

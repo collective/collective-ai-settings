@@ -35,6 +35,8 @@ from collective.aisettings.permissions import entry_permits
 from collective.aisettings.services.tasks import complete_task
 from collective.aisettings.services.tasks import create_task
 from collective.aisettings.services.tasks import fail_task
+from collective.aisettings.services.tasks import TaskStoreShuttingDown
+from plone import api
 from plone.restapi.deserializer import json_body
 from plone.restapi.services import Service
 from pydantic import BaseModel
@@ -127,7 +129,14 @@ class AIServiceEndpoint(Service):
         if not entry_permits(entry, self.context):
             self.request.response.setStatus(403)
             return {"error": "permission denied for AI model"}
-        task_id = create_task()
+        try:
+            task_id = create_task(
+                owner=api.user.get_current().getId(), label=capability
+            )
+        except TaskStoreShuttingDown:
+            self.request.response.setStatus(503)
+            self.request.response.setHeader("Retry-After", "2")
+            return {"error": "server shutting down, retry"}
         Thread(
             target=_worker,
             args=(service, task_id, capability, dict(entry), dict(data)),

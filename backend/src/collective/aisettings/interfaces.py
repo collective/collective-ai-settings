@@ -284,3 +284,21 @@ class IAIService(Interface):
         touches Zope state — safe to call from a worker thread. The
         permission gate (if any) must have been checked by the caller.
         """
+
+
+class ITaskLostEvent(Interface):
+    """An async AI task outlived ``COLLECTIVE_AISETTINGS_TASK_MAX_RUNNING``.
+
+    Fired by the shared task store only (``COLLECTIVE_AISETTINGS_TASK_STORE``),
+    once per task: when it is reported lost (``late`` false), and again if it
+    finishes after that (``late`` true, meaning the limit is too low). Never
+    fired for tasks interrupted by a shutdown.
+
+    Subscribers run in a worker or timer thread, with no site and no request.
+    """
+
+    task_id = Attribute("The task id")
+    label = Attribute("What the task was, e.g. a capability name, or None")
+    owner = Attribute("The user id that started the task, or None")
+    age = Attribute("Seconds since the task started")
+    late = Attribute("True when the task finished after being reported lost")
